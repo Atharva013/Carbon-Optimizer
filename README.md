@@ -40,17 +40,17 @@ This project creates an **automated carbon footprint optimization system** by in
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         DATA SOURCES                            │
-│   Cost Explorer API   │   CUR Reports   │   Carbon Footprint Tool│
+│   Cost Explorer API   │   CUR Reports   │  Carbon Footprint Tool│
 └──────────┬────────────┴────────┬────────┴────────────┬──────────┘
-           │                    │                      │
-           ▼                    ▼                      ▼
+           │                     │                     │
+           ▼                     ▼                     ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                       AUTOMATION LAYER                           │
+│                       AUTOMATION LAYER                          │
 │      EventBridge Scheduler  ──►  Lambda Function  ◄──  S3       │
 └───────────────────────────────┬─────────────────────────────────┘
                                 │
            ┌────────────────────┼────────────────────┐
-           ▼                    ▼                     ▼
+           ▼                    ▼                    ▼
 ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
 │   DynamoDB       │  │   SNS Topic      │  │ Systems Manager  │
 │  (Metrics Store) │  │ (Notifications)  │  │  (Config Store)  │
@@ -63,11 +63,11 @@ This project creates an **automated carbon footprint optimization system** by in
 
 | Section | Responsibility | Member |
 |---------|---------------|--------|
-| [Section 1](sections/section-1-iam-dynamodb.md) | IAM Roles & DynamoDB Setup | Team Member 1 |
-| [Section 2](sections/section-2-lambda.md) | Lambda Function Development | Team Member 2 |
-| [Section 3](sections/section-3-sns-eventbridge.md) | SNS Notifications & EventBridge Schedules | Team Member 3 |
-| [Section 4](sections/section-4-cur-ssm.md) | Cost & Usage Reports + SSM Configuration | Team Member 4 |
-| [Section 5](sections/section-5-testing-cleanup.md) | Validation, Testing & Cleanup | Team Member 5 |
+| [Section 1](sections/section-1-iam-dynamodb.md) | IAM Roles & DynamoDB Setup | Kehan Shaikh |
+| [Section 2](sections/section-2-lambda.md) | Lambda Function Development | Soham Kulkarni |
+| [Section 3](sections/section-3-sns-eventbridge.md) | SNS Notifications & EventBridge Schedules | Atharva Jadhav |
+| [Section 4](sections/section-4-cur-ssm.md) | Cost & Usage Reports + SSM Configuration | Priyank Adhav |
+| [Section 5](sections/section-5-testing-cleanup.md) | Validation, Testing & Cleanup | Abhishek Abhang |
 
 ---
 
@@ -160,11 +160,11 @@ echo "Project: ${PROJECT_NAME}"
 
 Each team member should follow their assigned section guide:
 
-- **Member 1** → [`sections/section-1-iam-dynamodb.md`](sections/section-1-iam-dynamodb.md)
-- **Member 2** → [`sections/section-2-lambda.md`](sections/section-2-lambda.md)
-- **Member 3** → [`sections/section-3-sns-eventbridge.md`](sections/section-3-sns-eventbridge.md)
-- **Member 4** → [`sections/section-4-cur-ssm.md`](sections/section-4-cur-ssm.md)
-- **Member 5** → [`sections/section-5-testing-cleanup.md`](sections/section-5-testing-cleanup.md)
+- **Kehan** → [`sections/section-1-iam-dynamodb.md`](sections/section-1-iam-dynamodb.md)
+- **Soham Kulkarni** → [`sections/section-2-lambda.md`](sections/section-2-lambda.md)
+- **Atharva Jadhav** → [`sections/section-3-sns-eventbridge.md`](sections/section-3-sns-eventbridge.md)
+- **Priyank** → [`sections/section-4-cur-ssm.md`](sections/section-4-cur-ssm.md)
+- **Abhishek Abhang** → [`sections/section-5-testing-cleanup.md`](sections/section-5-testing-cleanup.md)
 
 ---
 

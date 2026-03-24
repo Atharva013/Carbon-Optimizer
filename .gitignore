@@ -205,3 +205,39 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Build artifacts
+lambda-function.zip
+*.zip
+
+# Local environment files
+.env
+.env.*
+*.local
+
+# Temp files
+/tmp/
+*.tmp
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# AWS CLI artifacts
+aws-exports.json
+
+# macOS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# JSON policy files generated at runtime (contain env vars)
+lambda-trust-policy.json
+lambda-permissions-policy.json
+cur-definition.json

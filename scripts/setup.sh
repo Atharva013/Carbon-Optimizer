@@ -51,3 +51,14 @@ aws dynamodb create-table \
 aws dynamodb wait table-exists --table-name ${DYNAMODB_TABLE}
 
 echo "✅ DynamoDB table created: ${DYNAMODB_TABLE}"
+
+# Task 1.6 — Add GSI for service-level carbon queries
+aws dynamodb update-table \
+    --table-name ${DYNAMODB_TABLE} \
+    --attribute-definitions \
+        AttributeName=ServiceName,AttributeType=S \
+        AttributeName=CarbonIntensity,AttributeType=N \
+    --global-secondary-index-updates \
+        '[{"Create":{"IndexName":"ServiceCarbonIndex","KeySchema":[{"AttributeName":"ServiceName","KeyType":"HASH"},{"AttributeName":"CarbonIntensity","KeyType":"RANGE"}],"Projection":{"ProjectionType":"ALL"},"ProvisionedThroughput":{"ReadCapacityUnits":3,"WriteCapacityUnits":3}}}]'
+
+echo "✅ GSI ServiceCarbonIndex added to DynamoDB table"

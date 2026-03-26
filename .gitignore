@@ -238,6 +238,4 @@ aws-exports.json
 *.swp
 
 # JSON policy files generated at runtime (contain env vars)
-lambda-trust-policy.json
-lambda-permissions-policy.json
 cur-definition.json

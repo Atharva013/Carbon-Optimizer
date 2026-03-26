@@ -12,3 +12,24 @@ aws s3api put-bucket-encryption \
     --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
 
 echo "✅ S3 bucket created: ${S3_BUCKET}"
+
+# Task 1.4 — Create IAM role
+aws iam create-role \
+    --role-name ${PROJECT_NAME}-lambda-role \
+    --assume-role-policy-document file://iam/lambda-trust-policy.json
+
+sed -e "s/BUCKET_NAME_PLACEHOLDER/${S3_BUCKET}/g" \
+    -e "s/TABLE_NAME_PLACEHOLDER/${DYNAMODB_TABLE}/g" \
+    -e "s/PROJECT_NAME_PLACEHOLDER/${PROJECT_NAME}/g" \
+    iam/lambda-permissions-policy.json > /tmp/resolved-policy.json
+
+aws iam put-role-policy \
+    --role-name ${PROJECT_NAME}-lambda-role \
+    --policy-name CarbonOptimizationPolicy \
+    --policy-document file:///tmp/resolved-policy.json
+
+export LAMBDA_ROLE_ARN=$(aws iam get-role \
+    --role-name ${PROJECT_NAME}-lambda-role \
+    --query 'Role.Arn' --output text)
+
+echo "✅ IAM Role ARN: ${LAMBDA_ROLE_ARN}"

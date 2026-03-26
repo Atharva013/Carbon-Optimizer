@@ -33,3 +33,21 @@ export LAMBDA_ROLE_ARN=$(aws iam get-role \
     --query 'Role.Arn' --output text)
 
 echo "✅ IAM Role ARN: ${LAMBDA_ROLE_ARN}"
+
+# Task 1.5 — Create DynamoDB table
+aws dynamodb create-table \
+    --table-name ${DYNAMODB_TABLE} \
+    --attribute-definitions \
+        AttributeName=MetricType,AttributeType=S \
+        AttributeName=Timestamp,AttributeType=S \
+    --key-schema \
+        AttributeName=MetricType,KeyType=HASH \
+        AttributeName=Timestamp,KeyType=RANGE \
+    --provisioned-throughput \
+        ReadCapacityUnits=5,WriteCapacityUnits=5 \
+    --tags Key=Project,Value=${PROJECT_NAME} \
+           Key=Purpose,Value=CarbonFootprintOptimization
+
+aws dynamodb wait table-exists --table-name ${DYNAMODB_TABLE}
+
+echo "✅ DynamoDB table created: ${DYNAMODB_TABLE}"

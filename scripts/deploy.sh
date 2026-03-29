@@ -147,3 +147,9 @@ aws s3 cp cloudformation/sustainable-infrastructure.yaml \
 
 echo "✅ CloudFormation template uploaded to S3"
 echo "Template URL: https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/templates/sustainable-infrastructure.yaml"
+
+# Task 4.6 — Validate CloudFormation Template
+aws cloudformation validate-template \
+    --template-url "https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/templates/sustainable-infrastructure.yaml"
+
+echo "✅ CloudFormation template is valid"

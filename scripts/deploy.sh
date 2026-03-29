@@ -140,3 +140,10 @@ aws ssm put-parameter \
     --description "Sustainability optimization configuration for ${PROJECT_NAME}"
 
 echo "✅ SSM Parameter created: /${PROJECT_NAME}/sustainability-config"
+
+# Task 4.5 — Upload CloudFormation Template to S3
+aws s3 cp cloudformation/sustainable-infrastructure.yaml \
+    s3://${S3_BUCKET}/templates/sustainable-infrastructure.yaml
+
+echo "✅ CloudFormation template uploaded to S3"
+echo "Template URL: https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/templates/sustainable-infrastructure.yaml"

@@ -85,11 +85,9 @@ aws bcm-data-exports create-export \
     --export '{
         "Name": "carbon-optimization-export",
         "DataQuery": {
-            "QueryStatement": "SELECT * FROM CARBON_EMISSIONS",
+            "QueryStatement": "SELECT usage_period_start, usage_period_end, total_mbm_emissions_value, total_lbm_emissions_value, product_code, region_code FROM CARBON_EMISSIONS",
             "TableConfigurations": {
-                "CARBON_EMISSIONS": {
-                    "TIME_GRANULARITY": "DAILY"
-                }
+                "CARBON_EMISSIONS": {}
             }
         },
         "DestinationConfigurations": {

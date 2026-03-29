@@ -111,4 +111,32 @@ aws bcm-data-exports create-export \
     }'
 
 echo "✅ CUR 2.0 Data Export created for carbon emissions analysis"
-echo "ℹReports will appear in S3 within 24 hours of the first full day."
+echo "Reports will appear in S3 within 24 hours of the first full day."
+
+# Task 4.3 — Create Sustainability Configuration in SSM Parameter Store
+aws ssm put-parameter \
+    --name "/${PROJECT_NAME}/sustainability-config" \
+    --value '{
+        "carbon_thresholds": {
+            "high_impact": 100,
+            "optimization_threshold": 0.2
+        },
+        "regional_preferences": {
+            "preferred_regions": ["us-west-2", "eu-north-1", "ca-central-1"],
+            "avoid_regions": []
+        },
+        "optimization_rules": {
+            "graviton_migration": true,
+            "intelligent_tiering": true,
+            "serverless_first": true,
+            "right_sizing": true
+        },
+        "notification_settings": {
+            "email_threshold": 50,
+            "weekly_summary": true
+        }
+    }' \
+    --type String \
+    --description "Sustainability optimization configuration for ${PROJECT_NAME}"
+
+echo "✅ SSM Parameter created: /${PROJECT_NAME}/sustainability-config"

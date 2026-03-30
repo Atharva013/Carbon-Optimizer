@@ -135,7 +135,7 @@ carbon-optimizer/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/<your-org>/carbon-optimizer.git
+git clone https://github.com/abhishekabhang314/carbon-optimizer.git
 cd carbon-optimizer
 ```
 

@@ -30,8 +30,8 @@
         "s3:ListBucket"
       ],
       "Resource": [
-        "arn:aws:s3:::BUCKET_NAME_PLACEHOLDER",
-        "arn:aws:s3:::BUCKET_NAME_PLACEHOLDER/*"
+        "arn:aws:s3:::carbon-optimizer-cloud-data",
+        "arn:aws:s3:::carbon-optimizer-cloud-data/*"
       ]
     },
     {
@@ -43,12 +43,12 @@
         "dynamodb:Query",
         "dynamodb:Scan"
       ],
-      "Resource": "arn:aws:dynamodb:*:*:table/TABLE_NAME_PLACEHOLDER"
+      "Resource": "arn:aws:dynamodb:*:*:table/carbon-optimizer-cloud-metrics"
     },
     {
       "Effect": "Allow",
       "Action": ["sns:Publish"],
-      "Resource": "arn:aws:sns:*:*:PROJECT_NAME_PLACEHOLDER-notifications"
+      "Resource": "arn:aws:sns:*:*:carbon-optimizer-cloud-notifications"
     },
     {
       "Effect": "Allow",
@@ -57,7 +57,7 @@
         "ssm:PutParameter",
         "ssm:GetParameters"
       ],
-      "Resource": "arn:aws:ssm:*:*:parameter/PROJECT_NAME_PLACEHOLDER/*"
+      "Resource": "arn:aws:ssm:*:*:parameter/carbon-optimizer-cloud/*"
     }
   ]
 }

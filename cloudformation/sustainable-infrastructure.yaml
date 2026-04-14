@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Sustainable infrastructure template with carbon-optimized resources.
+  Uses Graviton processors and S3 Intelligent Tiering for reduced carbon footprint.
+
+Parameters:
+  EnvironmentType:
+    Type: String
+    Default: production
+    AllowedValues: [production, staging, development]
+    Description: Deployment environment type
+
+  ProjectName:
+    Type: String
+    Description: Name of the project for tagging and naming
+    Default: carbon-optimizer
+
+Mappings:
+  SustainableInstanceTypes:
+    production:
+      InstanceType: m6g.large
+    staging:
+      InstanceType: t4g.medium
+    development:
+      InstanceType: t4g.small
+
+Resources:
+
+  EfficientStorageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${ProjectName}-sustainable-${AWS::AccountId}"
+      IntelligentTieringConfigurations:
+        - Id: OptimizeStorage
+          Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionToIA
+            Status: Enabled
+            TransitionInDays: 30
+            StorageClass: STANDARD_IA
+          - Id: TransitionToGlacier
+            Status: Enabled
+            TransitionInDays: 90
+            StorageClass: GLACIER
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      Tags:
+        - Key: SustainabilityOptimized
+          Value: "true"
+        - Key: Project
+          Value: !Ref ProjectName
+
+Outputs:
+  StorageBucketName:
+    Description: Name of the sustainable storage bucket
+    Value: !Ref EfficientStorageBucket
+    Export:
+      Name: !Sub "${ProjectName}-StorageBucket"
+
+  InstanceType:
+    Description: Graviton instance type for this environment
+    Value: !FindInMap [SustainableInstanceTypes, !Ref EnvironmentType, InstanceType]

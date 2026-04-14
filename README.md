@@ -1,6 +1,6 @@
 # 🌱 Automated Carbon Footprint Optimization on AWS
 
-> An automated system to track, analyze, and optimize cloud infrastructure's environmental impact using AWS Cost Explorer, EventBridge, Lambda, and DynamoDB.
+> An automated system to track, analyze, and optimize cloud infrastructure's environmental impact using AWS Cost Explorer, EventBridge, Lambda, DynamoDB, and a real-time Dashboard.
 
 ---
 
@@ -30,8 +30,9 @@ This project creates an **automated carbon footprint optimization system** by in
 - 💡 Generates optimization recommendations to reduce environmental impact and costs
 - 🔔 Sends real-time alerts when high-impact optimization opportunities are found
 - 🗄️ Stores historical sustainability metrics for trend analysis
+- 🖥️ Visualizes all data through a real-time web dashboard hosted on S3
 
-**Estimated Monthly Cost:** $15–25 USD (Lambda, DynamoDB, S3, SNS)
+**Estimated Monthly Cost:** $15–25 USD (Lambda, DynamoDB, S3, SNS, API Gateway)
 
 ---
 
@@ -55,6 +56,13 @@ This project creates an **automated carbon footprint optimization system** by in
 │   DynamoDB       │  │   SNS Topic      │  │ Systems Manager  │
 │  (Metrics Store) │  │ (Notifications)  │  │  (Config Store)  │
 └──────────────────┘  └──────────────────┘  └──────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                     DASHBOARD LAYER (Section 5)                 │
+│   S3 Static Site  ◄──  API Gateway  ──►  Lambda (Data API)     │
+│   Real-time Charts │ Metrics Display │ Recommendations Panel   │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -67,7 +75,10 @@ This project creates an **automated carbon footprint optimization system** by in
 | [Section 2](sections/section-2-lambda.md) | Lambda Function Development | Soham Kulkarni |
 | [Section 3](sections/section-3-sns-eventbridge.md) | SNS Notifications & EventBridge Schedules | Atharva Jadhav |
 | [Section 4](sections/section-4-cur-ssm.md) | Cost & Usage Reports + SSM Configuration | Priyank Adhav |
-| [Section 5](sections/section-5-testing-cleanup.md) | Validation, Testing & Cleanup | Abhishek Abhang |
+| [Section 5](sections/section-5-dashboard.md) | Real-Time Dashboard & GUI | Atharva Jadhav |
+| [Section 6](sections/section-6-testing-cleanup.md) | Validation, Testing & Cleanup | Abhishek Abhang |
+
+> ⚠️ Sections must be deployed in order (1 → 2 → 3 → 4 → 5 → 6). Each section depends on the previous.
 
 ---
 
@@ -80,7 +91,7 @@ Before starting, ensure all team members have:
 - [ ] Python 3.11+ installed
 - [ ] Git installed and configured
 - [ ] GitHub account with repo access
-- [ ] IAM permissions for: Lambda, EventBridge, Cost Explorer, S3, DynamoDB, SNS, SSM, CUR
+- [ ] IAM permissions for: Lambda, EventBridge, Cost Explorer, S3, DynamoDB, SNS, SSM, CUR, API Gateway
 
 ---
 
@@ -98,7 +109,8 @@ carbon-optimizer/
 │   ├── section-2-lambda.md
 │   ├── section-3-sns-eventbridge.md
 │   ├── section-4-cur-ssm.md
-│   └── section-5-testing-cleanup.md
+│   ├── section-5-dashboard.md       ← NEW: Real-time Dashboard
+│   └── section-6-testing-cleanup.md ← Renamed from section-5
 │
 ├── docs/                            # Project documentation
 │   ├── architecture.md
@@ -107,6 +119,11 @@ carbon-optimizer/
 │
 ├── lambda-function/                 # Lambda source code
 │   └── index.py
+│
+├── dashboard/                       # Dashboard source (Section 5)
+│   ├── index.html                   # Main dashboard UI
+│   └── dashboard-api/
+│       └── index.py                 # API Gateway Lambda
 │
 ├── iam/                             # IAM policy documents
 │   ├── lambda-trust-policy.json
@@ -118,14 +135,14 @@ carbon-optimizer/
 ├── scripts/                         # Helper shell scripts
 │   ├── setup.sh
 │   ├── deploy.sh
+│   ├── validate.sh
 │   └── cleanup.sh
 │
 └── .github/
     ├── workflows/
     │   └── validate.yml             # CI validation
     └── ISSUE_TEMPLATE/
-        ├── bug_report.md
-        └── feature_request.md
+        └── bug_report.md
 ```
 
 ---
@@ -146,9 +163,8 @@ cd carbon-optimizer
 export AWS_REGION=$(aws configure get region)
 export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 
-# Generate unique project name
-RANDOM_SUFFIX=$(cat /dev/urandom | tr -dc 'a-z0-9' | fold -w 6 | head -n 1)
-export PROJECT_NAME="carbon-optimizer-${RANDOM_SUFFIX}"
+# Set project name (use the same suffix across all sessions!)
+export PROJECT_NAME="carbon-optimizer-cloud"
 export S3_BUCKET="${PROJECT_NAME}-data"
 export LAMBDA_FUNCTION="${PROJECT_NAME}-analyzer"
 export DYNAMODB_TABLE="${PROJECT_NAME}-metrics"
@@ -156,21 +172,20 @@ export DYNAMODB_TABLE="${PROJECT_NAME}-metrics"
 echo "Project: ${PROJECT_NAME}"
 ```
 
-### 3. Follow Section Guides
-
-Each team member should follow their assigned section guide:
+### 3. Follow Section Guides in Order
 
 - **Kehan** → [`sections/section-1-iam-dynamodb.md`](sections/section-1-iam-dynamodb.md)
-- **Soham Kulkarni** → [`sections/section-2-lambda.md`](sections/section-2-lambda.md)
-- **Atharva Jadhav** → [`sections/section-3-sns-eventbridge.md`](sections/section-3-sns-eventbridge.md)
+- **Soham** → [`sections/section-2-lambda.md`](sections/section-2-lambda.md)
+- **Atharva** → [`sections/section-3-sns-eventbridge.md`](sections/section-3-sns-eventbridge.md)
 - **Priyank** → [`sections/section-4-cur-ssm.md`](sections/section-4-cur-ssm.md)
-- **Abhishek Abhang** → [`sections/section-5-testing-cleanup.md`](sections/section-5-testing-cleanup.md)
+- **Atharva** → [`sections/section-5-dashboard.md`](sections/section-5-dashboard.md)
+- **Abhishek** → [`sections/section-6-testing-cleanup.md`](sections/section-6-testing-cleanup.md)
 
 ---
 
 ## Deployment Guide
 
-Run sections **in order** (Sections 1–4 deploy; Section 5 validates):
+Run sections **in order** (Sections 1–5 deploy; Section 6 validates):
 
 ```bash
 # Full deployment (run as team lead after all PRs merged)
@@ -193,6 +208,9 @@ aws dynamodb scan --table-name ${DYNAMODB_TABLE} --max-items 5
 
 # List EventBridge schedules
 aws scheduler list-schedules --name-prefix ${PROJECT_NAME}
+
+# Run full validation suite (Section 6)
+bash scripts/validate.sh
 ```
 
 ---
@@ -212,6 +230,16 @@ bash scripts/cleanup.sh
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming, commit conventions, and PR process.
 
+Branch naming for each section:
+```
+feature/section-1-iam-dynamodb
+feature/section-2-lambda
+feature/section-3-sns-eventbridge
+feature/section-4-cur-ssm
+feature/section-5-dashboard
+feature/section-6-testing-cleanup
+```
+
 ---
 
 ## Resources
@@ -220,3 +248,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming, commit conventions, an
 - [AWS Customer Carbon Footprint Tool](https://docs.aws.amazon.com/awsaccountbilling/latest/aboutv2/ccft-overview.html)
 - [Cost Explorer API Reference](https://docs.aws.amazon.com/aws-cost-management/latest/APIReference/Welcome.html)
 - [AWS Lambda Developer Guide](https://docs.aws.amazon.com/lambda/latest/dg/)
+- [AWS API Gateway Developer Guide](https://docs.aws.amazon.com/apigateway/latest/developerguide/)
+- [Amazon DynamoDB Developer Guide](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/)

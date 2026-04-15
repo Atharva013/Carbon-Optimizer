@@ -1,6 +1,6 @@
 # Section 3 — SNS Notifications & EventBridge Schedules
 
-**Assigned To:** Team Member 3  
+**Assigned To:** Atharva Jadhav  
 **Estimated Time:** 2–3 hours  
 **Branch:** `feature/section-3-sns-eventbridge`  
 **Dependencies:** Section 1 (IAM Role ARN) and Section 2 (Lambda Function ARN) must be merged

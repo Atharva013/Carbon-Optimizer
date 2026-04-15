@@ -1,5 +1,13 @@
 #!/bin/bash
 
+export AWS_REGION=${AWS_REGION:-ap-south-1}
+export AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text 2>/dev/null)}
+export PROJECT_NAME=${PROJECT_NAME:-carbon-optimizer-cloud}
+export LAMBDA_FUNCTION=${LAMBDA_FUNCTION:-${PROJECT_NAME}-analyzer}
+export DYNAMODB_TABLE=${DYNAMODB_TABLE:-${PROJECT_NAME}-metrics}
+export S3_BUCKET=${S3_BUCKET:-${PROJECT_NAME}-data}
+export SNS_TOPIC_ARN=${SNS_TOPIC_ARN:-arn:aws:sns:${AWS_REGION}:${AWS_ACCOUNT_ID}:${PROJECT_NAME}-notifications}
+
 echo "=================================================="
 echo "  Carbon Optimizer — Full Validation Suite"
 echo "=================================================="

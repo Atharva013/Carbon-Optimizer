@@ -10,7 +10,7 @@ set -e  # Exit immediately on any error
 # Environment Variables
 # -----------------------------------------------------------------------------
 export AWS_REGION=ap-south-1
-export AWS_ACCOUNT_ID=533389118899
+export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 export PROJECT_NAME=carbon-optimizer-cloud
 export LAMBDA_FUNCTION=${PROJECT_NAME}-analyzer
 export DYNAMODB_TABLE=${PROJECT_NAME}-metrics

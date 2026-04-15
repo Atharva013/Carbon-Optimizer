@@ -152,8 +152,8 @@ carbon-optimizer/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/abhishekabhang314/carbon-optimizer.git
-cd carbon-optimizer
+git clone https://github.com/Atharva013/Carbon-Optimizer.git
+cd Carbon-Optimizer
 ```
 
 ### 2. Configure Environment
@@ -191,6 +191,7 @@ Run sections **in order** (Sections 1–5 deploy; Section 6 validates):
 # Full deployment (run as team lead after all PRs merged)
 bash scripts/setup.sh
 bash scripts/deploy.sh
+bash scripts/deploy-dashboard.sh
 ```
 
 ---

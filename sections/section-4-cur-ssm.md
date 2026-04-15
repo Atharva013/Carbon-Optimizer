@@ -1,6 +1,6 @@
 # Section 4 — Cost & Usage Reports + Systems Manager Configuration
 
-**Assigned To:** Team Member 4  
+**Assigned To:** Priyank Adhav
 **Estimated Time:** 2–3 hours  
 **Branch:** `feature/section-4-cur-ssm`  
 **Dependencies:** Section 1 (S3 bucket must exist)

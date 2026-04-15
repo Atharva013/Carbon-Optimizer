@@ -53,6 +53,14 @@ Resources:
         - Key: Project
           Value: !Ref ProjectName
 
+  SustainableComputeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for sustainable compute instances
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
 Outputs:
   StorageBucketName:
     Description: Name of the sustainable storage bucket

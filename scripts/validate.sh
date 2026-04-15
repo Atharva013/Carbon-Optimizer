@@ -7,6 +7,9 @@ echo "=================================================="
 PASS=0
 FAIL=0
 
+API_ID=$(aws apigateway get-rest-apis --region ${AWS_REGION:-ap-south-1} --query "items[?name=='${PROJECT_NAME}-dashboard-api'].id" --output text 2>/dev/null)
+API_ENDPOINT="https://${API_ID}.execute-api.${AWS_REGION:-ap-south-1}.amazonaws.com/prod"
+
 check() {
     local description=$1
     local command=$2

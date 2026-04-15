@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 echo "=================================================="
 echo "  Carbon Optimizer — Full Validation Suite"

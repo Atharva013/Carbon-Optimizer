@@ -1,6 +1,6 @@
 # Section 2 — Lambda Function Development
 
-**Assigned To:** Team Member 2  
+**Assigned To:** Soham Kulkarni
 **Estimated Time:** 3–4 hours  
 **Branch:** `feature/section-2-lambda`  
 **Dependencies:** Section 1 must be merged (IAM Role ARN required)

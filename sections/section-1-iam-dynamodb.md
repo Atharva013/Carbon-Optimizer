@@ -1,6 +1,6 @@
 # Section 1 — IAM Roles & DynamoDB Setup
 
-**Assigned To:** Team Member 1  
+**Assigned To:** Kehan Shaikh  
 **Estimated Time:** 2–3 hours  
 **Branch:** `feature/section-1-iam-dynamodb`  
 **Dependencies:** None (this section must be completed first)

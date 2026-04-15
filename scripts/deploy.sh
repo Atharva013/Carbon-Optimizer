@@ -243,3 +243,157 @@ echo ""
 echo "================================================"
 echo "  Section 3 Deployment Complete ✅"
 echo "================================================"
+
+
+
+
+# =============================================================================
+# Section 4 — Cost & Usage Reports + SSM Configuration
+# =============================================================================
+
+echo ""
+echo "================================================"
+echo "  Section 4 — CUR + SSM + CloudFormation"
+echo "================================================"
+
+# -----------------------------------------------------------------------------
+# Task 4.1 — Add S3 Bucket Policy for CUR Delivery
+# -----------------------------------------------------------------------------
+echo ""
+echo "[ Task 4.1 ] Setting S3 bucket policy for CUR..."
+
+cat > /tmp/cur-bucket-policy.json << EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CURGetBucketPermissions",
+      "Effect": "Allow",
+      "Principal": { "Service": "billingreports.amazonaws.com" },
+      "Action": [
+        "s3:GetBucketAcl",
+        "s3:GetBucketPolicy"
+      ],
+      "Resource": "arn:aws:s3:::${S3_BUCKET}"
+    },
+    {
+      "Sid": "CURPutObject",
+      "Effect": "Allow",
+      "Principal": { "Service": "billingreports.amazonaws.com" },
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::${S3_BUCKET}/*"
+    }
+  ]
+}
+EOF
+
+aws s3api put-bucket-policy \
+    --bucket ${S3_BUCKET} \
+    --policy file:///tmp/cur-bucket-policy.json
+
+echo "✅ S3 bucket policy updated"
+
+# -----------------------------------------------------------------------------
+# Task 4.2 — Create CUR Report Definition (idempotent)
+# -----------------------------------------------------------------------------
+echo ""
+echo "[ Task 4.2 ] Configuring CUR report..."
+
+CUR_EXISTS=$(aws cur describe-report-definitions \
+    --region us-east-1 \
+    --query "ReportDefinitions[?ReportName=='carbon-optimization-detailed-report'].ReportName" \
+    --output text)
+
+if [ -z "${CUR_EXISTS}" ]; then
+
+cat > /tmp/cur-definition.json << EOF
+{
+  "ReportName": "carbon-optimization-detailed-report",
+  "TimeUnit": "DAILY",
+  "Format": "Parquet",
+  "Compression": "Parquet",
+  "AdditionalSchemaElements": ["RESOURCES"],
+  "S3Bucket": "${S3_BUCKET}",
+  "S3Prefix": "cost-usage-reports",
+  "S3Region": "${AWS_REGION}",
+  "RefreshClosedReports": true,
+  "ReportVersioning": "OVERWRITE_REPORT"
+}
+EOF
+
+aws cur put-report-definition \
+    --region us-east-1 \
+    --report-definition file:///tmp/cur-definition.json
+
+echo "✅ CUR report created"
+
+else
+    echo "✅ CUR already exists — skipping"
+fi
+
+# -----------------------------------------------------------------------------
+# Task 4.3 — Create SSM Parameter
+# -----------------------------------------------------------------------------
+echo ""
+echo "[ Task 4.3 ] Storing sustainability config in SSM..."
+
+aws ssm put-parameter \
+    --name "/${PROJECT_NAME}/sustainability-config" \
+    --value '{
+        "carbon_thresholds": {
+            "high_impact": 50,
+            "optimization_threshold": 0.1
+        },
+        "regional_preferences": {
+            "preferred_regions": ["us-west-2", "eu-north-1", "ca-central-1"],
+            "current_region": "ap-south-1",
+            "avoid_regions": []
+        },
+        "optimization_rules": {
+            "graviton_migration": true,
+            "intelligent_tiering": true,
+            "serverless_first": true,
+            "right_sizing": true
+        },
+        "notification_settings": {
+            "email_threshold": 50,
+            "weekly_summary": true
+        }
+    }' \
+    --type String \
+    --region ${AWS_REGION} \
+    --overwrite
+
+echo "✅ SSM parameter stored"
+
+# -----------------------------------------------------------------------------
+# Task 4.5 — Upload CloudFormation Template to S3
+# -----------------------------------------------------------------------------
+echo ""
+echo "[ Task 4.5 ] Uploading CloudFormation template..."
+
+aws s3 cp cloudformation/sustainable-infrastructure.yaml \
+    s3://${S3_BUCKET}/templates/sustainable-infrastructure.yaml \
+    --region ${AWS_REGION}
+
+echo "✅ Template uploaded"
+
+# -----------------------------------------------------------------------------
+# Task 4.6 — Validate CloudFormation Template from S3
+# -----------------------------------------------------------------------------
+echo ""
+echo "[ Task 4.6 ] Validating CloudFormation template..."
+
+aws cloudformation validate-template \
+    --template-url "https://${S3_BUCKET}.s3.${AWS_REGION}.amazonaws.com/templates/sustainable-infrastructure.yaml" \
+    --region ${AWS_REGION} > /dev/null
+
+echo "✅ CloudFormation template validated"
+
+# -----------------------------------------------------------------------------
+# Section 4 Complete
+# -----------------------------------------------------------------------------
+echo ""
+echo "================================================"
+echo "  Section 4 Deployment Complete ✅"
+echo "================================================"

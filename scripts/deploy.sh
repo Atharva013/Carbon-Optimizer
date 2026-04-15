@@ -83,11 +83,7 @@ echo "[ Task 3.3 ] Updating Lambda environment variables..."
 
 aws lambda update-function-configuration \
     --function-name ${LAMBDA_FUNCTION} \
-    --environment Variables="{
-        \"DYNAMODB_TABLE\":\"${DYNAMODB_TABLE}\",
-        \"S3_BUCKET\":\"${S3_BUCKET}\",
-        \"SNS_TOPIC_ARN\":\"${SNS_TOPIC_ARN}\"
-    }" \
+    --environment "Variables={DYNAMODB_TABLE=${DYNAMODB_TABLE},S3_BUCKET=${S3_BUCKET},SNS_TOPIC_ARN=${SNS_TOPIC_ARN}}" \
     --region ${AWS_REGION} > /dev/null
 
 echo "✅ Lambda environment updated with SNS ARN"

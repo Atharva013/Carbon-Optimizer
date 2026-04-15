@@ -6,7 +6,7 @@
 set -e
 
 export AWS_REGION=${AWS_REGION:-ap-south-1}
-export AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID:-533389118899}
+export AWS_ACCOUNT_ID=${AWS_ACCOUNT_ID:-$(aws sts get-caller-identity --query Account --output text)}
 export PROJECT_NAME=${PROJECT_NAME:-carbon-optimizer-cloud}
 export DYNAMODB_TABLE=${DYNAMODB_TABLE:-${PROJECT_NAME}-metrics}
 export S3_BUCKET=${S3_BUCKET:-${PROJECT_NAME}-data}

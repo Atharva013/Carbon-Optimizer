@@ -192,6 +192,9 @@ Run sections **in order** (Sections 1–5 deploy; Section 6 validates):
 bash scripts/setup.sh
 bash scripts/deploy.sh
 bash scripts/deploy-dashboard.sh
+
+# Optional: Add AWS CloudFront for secure HTTPS Dashboard link (takes 5-10m)
+bash scripts/deploy-cloudfront.sh
 ```
 
 ---

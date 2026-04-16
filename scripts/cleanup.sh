@@ -87,6 +87,36 @@ aws cur delete-report-definition \
     --report-name carbon-optimization-detailed-report 2>/dev/null \
     && echo "  ✅ CUR report deleted" || echo "  ℹ️  CUR report not found"
 
+# CloudFront
+echo "Deleting CloudFront Distribution..."
+CF_DOMAIN="${S3_BUCKET}.s3-website.${AWS_REGION:-ap-south-1}.amazonaws.com"
+DIST_ID=$(aws cloudfront list-distributions \
+    --query "DistributionList.Items[?Origins.Items[0].DomainName=='${CF_DOMAIN}'].Id" \
+    --output text 2>/dev/null | head -1)
+
+if [ -n "$DIST_ID" ] && [ "$DIST_ID" != "None" ]; then
+    echo "  Disabling distribution ${DIST_ID}..."
+    CF_ETAG=$(aws cloudfront get-distribution-config --id ${DIST_ID} --query 'ETag' --output text)
+    aws cloudfront get-distribution-config --id ${DIST_ID} --query 'DistributionConfig' > /tmp/cf-config.json
+    
+    python3 -c "import json; d=json.load(open('/tmp/cf-config.json')); d['Enabled']=False; json.dump(d, open('/tmp/cf-config-mod.json', 'w'))"
+
+    aws cloudfront update-distribution \
+        --id ${DIST_ID} \
+        --if-match ${CF_ETAG} \
+        --distribution-config file:///tmp/cf-config-mod.json > /dev/null
+
+    echo "  Waiting for distribution to be disabled (can take a few mins)..."
+    aws cloudfront wait distribution-deployed --id ${DIST_ID}
+
+    echo "  Deleting distribution..."
+    CF_ETAG2=$(aws cloudfront get-distribution-config --id ${DIST_ID} --query 'ETag' --output text)
+    aws cloudfront delete-distribution --id ${DIST_ID} --if-match ${CF_ETAG2}
+    echo "  ✅ CloudFront distribution deleted"
+else
+    echo "  ℹ️  CloudFront distribution not found"
+fi
+
 # S3
 echo "Deleting S3 bucket..."
 aws s3 rm s3://${S3_BUCKET} --recursive 2>/dev/null || true
@@ -96,7 +126,7 @@ aws s3 rb s3://${S3_BUCKET} 2>/dev/null \
 # Local temp files
 rm -f /tmp/lambda-response.json /tmp/api-response.json \
       /tmp/cur-bucket-policy.json /tmp/dashboard-api.zip \
-      /tmp/website-bucket-policy.json
+      /tmp/website-bucket-policy.json /tmp/cf-config.json /tmp/cf-config-mod.json /tmp/cf-out.json
 echo "  ✅ Local temp files cleaned"
 
 echo ""

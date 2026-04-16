@@ -23,10 +23,9 @@ DIST_ID=$(aws cloudfront list-distributions \
 
 if [ -z "${DIST_ID}" ] || [ "${DIST_ID}" == "None" ]; then
     echo "  Creating CloudFront Distribution. This will take multiple minutes..."
-    
-    # We create a distribution using caller reference
+
     CALLER_REF=$(date +%s)
-    
+
     cat > /tmp/cf-config.json << EOF
 {
     "CallerReference": "${CALLER_REF}",
@@ -41,7 +40,11 @@ if [ -z "${DIST_ID}" ] || [ "${DIST_ID}" == "None" ]; then
                 "CustomOriginConfig": {
                     "HTTPPort": 80,
                     "HTTPSPort": 443,
-                    "OriginProtocolPolicy": "http-only"
+                    "OriginProtocolPolicy": "http-only",
+                    "OriginSslProtocols": {
+                        "Quantity": 1,
+                        "Items": ["TLSv1.2"]
+                    }
                 }
             }
         ]
@@ -49,14 +52,33 @@ if [ -z "${DIST_ID}" ] || [ "${DIST_ID}" == "None" ]; then
     "DefaultCacheBehavior": {
         "TargetOriginId": "S3-Website-${S3_BUCKET}",
         "ViewerProtocolPolicy": "redirect-to-https",
-        "MinTTL": 0,
+        "AllowedMethods": {
+            "Quantity": 2,
+            "Items": ["GET", "HEAD"],
+            "CachedMethods": {
+                "Quantity": 2,
+                "Items": ["GET", "HEAD"]
+            }
+        },
+        "Compress": true,
         "ForwardedValues": {
             "QueryString": false,
-            "Cookies": { "Forward": "none" }
-        }
+            "Cookies": { "Forward": "none" },
+            "Headers": { "Quantity": 0 },
+            "QueryStringCacheKeys": { "Quantity": 0 }
+        },
+        "MinTTL": 0,
+        "DefaultTTL": 86400,
+        "MaxTTL": 31536000
     },
-    "Comment": "Carbon Optimizer Dashboard",
-    "Enabled": true
+    "Comment": "Carbon Optimizer Dashboard — HTTPS",
+    "PriceClass": "PriceClass_100",
+    "Enabled": true,
+    "ViewerCertificate": {
+        "CloudFrontDefaultCertificate": true,
+        "MinimumProtocolVersion": "TLSv1.2_2021"
+    },
+    "HttpVersion": "http2"
 }
 EOF
 
@@ -66,8 +88,9 @@ EOF
 
     DIST_ID=$(cat /tmp/cf-out.json | python3 -c "import sys,json; print(json.load(sys.stdin)['Distribution']['Id'])")
     DIST_DOMAIN=$(cat /tmp/cf-out.json | python3 -c "import sys,json; print(json.load(sys.stdin)['Distribution']['DomainName'])")
-    
-    echo "✅ Distribution Status: IN_PROGRESS"
+
+    echo "✅ Distribution created: ${DIST_ID}"
+    echo "   Status: IN_PROGRESS (propagation takes 5-10 minutes)"
 else
     echo "✅ Distribution already exists: ${DIST_ID}"
     DIST_DOMAIN=$(aws cloudfront get-distribution --id ${DIST_ID} --query 'Distribution.DomainName' --output text 2>/dev/null)

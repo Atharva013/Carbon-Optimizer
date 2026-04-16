@@ -6,18 +6,35 @@
 
 ## 📋 Table of Contents
 
+- [🚀 Quick Deploy (Terraform)](#-quick-deploy-terraform)
 - [Project Overview](#project-overview)
 - [Architecture](#architecture)
 - [Team & Responsibilities](#team--responsibilities)
 - [Prerequisites](#prerequisites)
 - [Repository Structure](#repository-structure)
 - [Getting Started](#getting-started)
-- [Environment Setup](#environment-setup)
 - [Deployment Guide](#deployment-guide)
 - [Validation & Testing](#validation--testing)
 - [Cleanup](#cleanup)
 - [Contributing](#contributing)
 - [Resources](#resources)
+
+---
+
+## 🚀 Quick Deploy (Terraform)
+
+**Want to skip the step-by-step sections?** Deploy the entire stack in under 5 minutes:
+
+```bash
+git clone https://github.com/Atharva013/Carbon-Optimizer.git
+cd Carbon-Optimizer/terraform
+cp terraform.tfvars.example terraform.tfvars   # edit with your region/email
+terraform init && terraform apply
+```
+
+After deployment, open the **Dashboard URL** shown in the output. For details, see the [Terraform README](terraform/README.md).
+
+> ⚠️ Requires [Terraform ≥ 1.3](https://terraform.io) and [AWS CLI v2](https://aws.amazon.com/cli/) with configured credentials.
 
 ---
 
@@ -104,21 +121,26 @@ carbon-optimizer/
 ├── CHANGELOG.md                     # Version history
 ├── .gitignore                       # Ignored files
 │
+├── terraform/                       # ⚡ One-command deploy (recommended)
+│   ├── main.tf                      # All AWS resources
+│   ├── variables.tf                 # User configuration
+│   ├── outputs.tf                   # Dashboard URL & endpoints
+│   ├── terraform.tfvars.example     # Example config (copy to .tfvars)
+│   └── README.md                    # Terraform quick-start guide
+│
 ├── sections/                        # Per-member task breakdowns
 │   ├── section-1-iam-dynamodb.md
 │   ├── section-2-lambda.md
 │   ├── section-3-sns-eventbridge.md
 │   ├── section-4-cur-ssm.md
-│   ├── section-5-dashboard.md       ← NEW: Real-time Dashboard
-│   └── section-6-testing-cleanup.md ← Renamed from section-5
+│   ├── section-5-dashboard.md
+│   └── section-6-testing-cleanup.md
 │
 ├── docs/                            # Project documentation
-│   ├── architecture.md
-│   ├── environment-setup.md
 │   └── github-project-setup.md
 │
 ├── lambda-function/                 # Lambda source code
-│   └── index.py
+│   └── index.py                     # Carbon footprint analyzer
 │
 ├── dashboard/                       # Dashboard source (Section 5)
 │   ├── index.html                   # Main dashboard UI
@@ -132,15 +154,17 @@ carbon-optimizer/
 ├── cloudformation/                  # CloudFormation templates
 │   └── sustainable-infrastructure.yaml
 │
-├── scripts/                         # Helper shell scripts
-│   ├── setup.sh
-│   ├── deploy.sh
-│   ├── validate.sh
-│   └── cleanup.sh
+├── scripts/                         # Shell deploy scripts (manual path)
+│   ├── setup.sh                     # Initial resource creation
+│   ├── deploy.sh                    # SNS + EventBridge + CUR + SSM
+│   ├── deploy-dashboard.sh          # Dashboard Lambda + API + S3
+│   ├── deploy-cloudfront.sh         # Optional HTTPS via CloudFront
+│   ├── validate.sh                  # End-to-end validation
+│   └── cleanup.sh                   # Delete all resources
 │
 └── .github/
     ├── workflows/
-    │   └── validate.yml             # CI validation
+    │   └── validate.yml
     └── ISSUE_TEMPLATE/
         └── bug_report.md
 ```
@@ -185,15 +209,31 @@ echo "Project: ${PROJECT_NAME}"
 
 ## Deployment Guide
 
+### Option A — Terraform (Recommended) ⚡
+
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars   # edit with your values
+terraform init
+terraform apply
+```
+
+See [terraform/README.md](terraform/README.md) for full details.
+
+### Option B — Shell Scripts (Step-by-step)
+
 Run sections **in order** (Sections 1–5 deploy; Section 6 validates):
 
 ```bash
-# Full deployment (run as team lead after all PRs merged)
-bash scripts/setup.sh
-bash scripts/deploy.sh
-bash scripts/deploy-dashboard.sh
+# Source environment
+source .env   # or set exports manually
 
-# Optional: Add AWS CloudFront for secure HTTPS Dashboard link (takes 5-10m)
+# Full deployment
+bash scripts/setup.sh              # IAM + DynamoDB + S3
+bash scripts/deploy.sh             # SNS + EventBridge + CUR + SSM
+bash scripts/deploy-dashboard.sh   # Dashboard Lambda + API Gateway + S3 upload
+
+# Optional: HTTPS via CloudFront (takes 5-10 minutes)
 bash scripts/deploy-cloudfront.sh
 ```
 
@@ -222,11 +262,14 @@ bash scripts/validate.sh
 ## Cleanup
 
 ```bash
-# Remove all deployed resources
+# If deployed with Terraform:
+cd terraform && terraform destroy
+
+# If deployed with shell scripts:
 bash scripts/cleanup.sh
 ```
 
-> ⚠️ This deletes all AWS resources created by this project. Confirm before running.
+> ⚠️ This permanently deletes all AWS resources created by this project.
 
 ---
 

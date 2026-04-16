@@ -1,0 +1,20 @@
+# =============================================================================
+# Carbon Optimizer — Terraform Configuration
+# =============================================================================
+# Copy this file to terraform.tfvars and edit with YOUR values.
+#
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# ⚠️  NEVER commit terraform.tfvars — it's gitignored for your safety.
+# =============================================================================
+
+# AWS region for deployment (default: ap-south-1)
+aws_region = "ap-south-1"
+
+# Project name — used as prefix for all resources
+# Change this if deploying alongside another instance
+project_name = "carbon-optimizer-cloud"
+
+# Email for carbon optimization alerts (optional — leave empty to skip)
+# You'll receive a confirmation email from AWS after deployment
+notification_email = ""

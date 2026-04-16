@@ -37,8 +37,16 @@ REGIONAL_FACTORS = {
     'ap-northeast-1': 0.75, 'ca-central-1': 0.23, 'sa-east-1': 0.45, 'global': 0.85,
 }
 
-# Simple in-memory cache for warm Lambda reuse (5 min TTL)
-_ce_cache = {'data': None, 'ts': 0}
+# Valid cost metric types
+VALID_COST_TYPES = {'BlendedCost', 'UnblendedCost', 'NetUnblendedCost'}
+COST_TYPE_LABELS = {
+    'BlendedCost': 'Blended',
+    'UnblendedCost': 'Unblended',
+    'NetUnblendedCost': 'Net Unblended (after credits)',
+}
+
+# Simple in-memory cache for warm Lambda reuse (5 min TTL), keyed by cost_type
+_ce_cache = {}
 
 
 class DecimalEncoder(json.JSONEncoder):
@@ -67,12 +75,30 @@ def err(msg, code=500):
             'body': json.dumps({'error': msg})}
 
 
-def _get_ce_service_data(days=30):
-    """Fetch per-service cost data from Cost Explorer with 5-min cache."""
+def _parse_cost_type(event):
+    """Extract and validate cost_type from query string params."""
+    params = event.get('queryStringParameters') or {}
+    ct = params.get('cost_type', 'UnblendedCost')
+    # Accept shorthand names
+    shorthand = {
+        'blended': 'BlendedCost',
+        'unblended': 'UnblendedCost',
+        'net_unblended': 'NetUnblendedCost',
+    }
+    ct = shorthand.get(ct.lower(), ct)
+    if ct not in VALID_COST_TYPES:
+        ct = 'UnblendedCost'
+    return ct
+
+
+def _get_ce_service_data(days=30, cost_type='UnblendedCost'):
+    """Fetch per-service cost data from Cost Explorer with 5-min cache per cost_type."""
     global _ce_cache
     now = datetime.now().timestamp()
-    if _ce_cache['data'] and (now - _ce_cache['ts']) < 300:
-        return _ce_cache['data']
+    cache_key = f'{cost_type}_{days}'
+    cached = _ce_cache.get(cache_key)
+    if cached and (now - cached['ts']) < 300:
+        return cached['data']
 
     end   = datetime.now().date()
     start = end - timedelta(days=days)
@@ -81,7 +107,7 @@ def _get_ce_service_data(days=30):
         TimePeriod={'Start': start.strftime('%Y-%m-%d'),
                     'End':   end.strftime('%Y-%m-%d')},
         Granularity='MONTHLY',
-        Metrics=['BlendedCost', 'UsageQuantity'],
+        Metrics=[cost_type, 'UsageQuantity'],
         GroupBy=[{'Type': 'DIMENSION', 'Key': 'SERVICE'},
                  {'Type': 'DIMENSION', 'Key': 'REGION'}]
     )
@@ -91,7 +117,7 @@ def _get_ce_service_data(days=30):
         for group in period.get('Groups', []):
             svc    = group['Keys'][0]
             region = group['Keys'][1] if len(group['Keys']) > 1 else 'global'
-            cost   = float(group['Metrics']['BlendedCost']['Amount'])
+            cost   = float(group['Metrics'][cost_type]['Amount'])
             usage  = float(group['Metrics']['UsageQuantity']['Amount'])
 
             if svc not in services:
@@ -106,7 +132,7 @@ def _get_ce_service_data(days=30):
             rf = REGIONAL_FACTORS.get(region, 1.0)
             services[svc]['carbon_kg'] += abs(cost) * cf * rf
 
-    _ce_cache = {'data': services, 'ts': now}
+    _ce_cache[cache_key] = {'data': services, 'ts': now}
     return services
 
 
@@ -116,19 +142,20 @@ def lambda_handler(event, context):
         return {'statusCode': 200, 'headers': headers, 'body': ''}
 
     path = event.get('path', '/')
-    logger.info(f"Dashboard API: {event.get('httpMethod','GET')} {path}")
+    cost_type = _parse_cost_type(event)
+    logger.info(f"Dashboard API: {event.get('httpMethod','GET')} {path} [cost_type={cost_type}]")
 
     try:
         if path.endswith('/summary'):
-            return get_summary()
+            return get_summary(cost_type)
         elif path.endswith('/metrics'):
-            return get_metrics()
+            return get_metrics(cost_type)
         elif path.endswith('/recommendations'):
-            return get_recommendations()
+            return get_recommendations(cost_type)
         elif path.endswith('/services'):
-            return get_services()
+            return get_services(cost_type)
         elif path.endswith('/live-services'):
-            return get_live_services()
+            return get_live_services(cost_type)
         elif path.endswith('/health'):
             return ok({'status': 'healthy', 'table': TABLE_NAME,
                        'ts': datetime.now().isoformat()})
@@ -139,10 +166,10 @@ def lambda_handler(event, context):
         return err(str(e))
 
 
-def get_summary():
+def get_summary(cost_type='UnblendedCost'):
     """Summary stats — Cost Explorer primary, DynamoDB for optimization metadata."""
     try:
-        ce = _get_ce_service_data(30)
+        ce = _get_ce_service_data(30, cost_type)
         total_cost   = sum(abs(s['cost'])      for s in ce.values())
         total_carbon = sum(s['carbon_kg'] for s in ce.values())
         active       = sum(1 for s in ce.values() if s['status'] == 'ACTIVE')
@@ -181,17 +208,19 @@ def get_summary():
             'last_updated':            last_analysis,
             'last_timestamp':          datetime.now().isoformat(),
             'top_recommendations':     [],
-            'data_source':             'cost-explorer'
+            'data_source':             'cost-explorer',
+            'cost_type':               cost_type,
+            'cost_type_label':         COST_TYPE_LABELS.get(cost_type, cost_type),
         }})
     except Exception as e:
         logger.error(f"get_summary error: {e}")
         return err(str(e))
 
 
-def get_metrics():
+def get_metrics(cost_type='UnblendedCost'):
     """Per-service carbon metrics from Cost Explorer."""
     try:
-        ce = _get_ce_service_data(30)
+        ce = _get_ce_service_data(30, cost_type)
         metrics = []
         for svc, d in ce.items():
             if d['cost'] == 0 and d['usage'] == 0:
@@ -207,16 +236,16 @@ def get_metrics():
                 'recommendations':    []
             })
         metrics.sort(key=lambda x: x['carbon_kg_co2'], reverse=True)
-        return ok({'metrics': metrics, 'count': len(metrics)})
+        return ok({'metrics': metrics, 'count': len(metrics), 'cost_type': cost_type})
     except Exception as e:
         logger.error(f"get_metrics error: {e}")
         return err(str(e))
 
 
-def get_recommendations():
+def get_recommendations(cost_type='UnblendedCost'):
     """Generate recommendations from Cost Explorer data."""
     try:
-        ce = _get_ce_service_data(30)
+        ce = _get_ce_service_data(30, cost_type)
         actions = {
             'Amazon Elastic Compute Cloud - Compute':
                 'Rightsize instances or migrate to Graviton for 20% energy savings',
@@ -246,16 +275,16 @@ def get_recommendations():
                     'carbon':   d['carbon_kg'],
                 })
         recs.sort(key=lambda x: x['cost'], reverse=True)
-        return ok({'recommendations': recs[:10], 'count': len(recs)})
+        return ok({'recommendations': recs[:10], 'count': len(recs), 'cost_type': cost_type})
     except Exception as e:
         logger.error(f"get_recommendations error: {e}")
         return err(str(e))
 
 
-def get_services():
+def get_services(cost_type='UnblendedCost'):
     """All tracked services from Cost Explorer."""
     try:
-        ce = _get_ce_service_data(30)
+        ce = _get_ce_service_data(30, cost_type)
         services = []
         for svc, d in ce.items():
             if d['cost'] == 0 and d['usage'] == 0:
@@ -271,13 +300,13 @@ def get_services():
                 'status': d['status']
             })
         services.sort(key=lambda x: x['carbon'], reverse=True)
-        return ok({'services': services, 'count': len(services)})
+        return ok({'services': services, 'count': len(services), 'cost_type': cost_type})
     except Exception as e:
         logger.error(f"get_services error: {e}")
         return err(str(e))
 
 
-def get_live_services():
+def get_live_services(cost_type='UnblendedCost'):
     """Live services from Cost Explorer — last 7 days."""
     try:
         end   = datetime.now().date()
@@ -287,7 +316,7 @@ def get_live_services():
             TimePeriod={'Start': start.strftime('%Y-%m-%d'),
                         'End':   end.strftime('%Y-%m-%d')},
             Granularity='MONTHLY',
-            Metrics=['BlendedCost', 'UsageQuantity'],
+            Metrics=[cost_type, 'UsageQuantity'],
             GroupBy=[{'Type': 'DIMENSION', 'Key': 'SERVICE'},
                      {'Type': 'DIMENSION', 'Key': 'REGION'}]
         )
@@ -297,7 +326,7 @@ def get_live_services():
             for group in period.get('Groups', []):
                 svc    = group['Keys'][0]
                 region = group['Keys'][1] if len(group['Keys']) > 1 else 'global'
-                cost   = float(group['Metrics']['BlendedCost']['Amount'])
+                cost   = float(group['Metrics'][cost_type]['Amount'])
                 usage  = float(group['Metrics']['UsageQuantity']['Amount'])
 
                 if svc not in services:
@@ -318,7 +347,8 @@ def get_live_services():
             'count': len(result),
             'period_start': str(start),
             'period_end':   str(end),
-            'active_count': sum(1 for s in result if s['status'] == 'ACTIVE')
+            'active_count': sum(1 for s in result if s['status'] == 'ACTIVE'),
+            'cost_type': cost_type
         })
     except Exception as e:
         logger.error(f"get_live_services error: {e}")

@@ -170,8 +170,8 @@ echo "  API Endpoint: ${API_ENDPOINT}"
 # ── Step 4: Inject API endpoint into HTML ────────────────────────────────────
 echo ""
 echo "[ Step 4 ] Injecting API endpoint into dashboard HTML..."
-sed -i "s|API_ENDPOINT_PLACEHOLDER|${API_ENDPOINT}|g" dashboard/index.html
-echo "✅ API endpoint injected: ${API_ENDPOINT}"
+sed "s|API_ENDPOINT_PLACEHOLDER|${API_ENDPOINT}|g" dashboard/index.html > /tmp/index.html
+echo "✅ API endpoint injected into deployment package: ${API_ENDPOINT}"
 
 # ── Step 5: Enable S3 Static Website Hosting ─────────────────────────────────
 echo ""
@@ -232,7 +232,7 @@ echo "✅ S3 static website configured"
 # ── Step 6: Upload dashboard to S3 ───────────────────────────────────────────
 echo ""
 echo "[ Step 6 ] Uploading dashboard to S3..."
-aws s3 cp dashboard/index.html \
+aws s3 cp /tmp/index.html \
     s3://${S3_BUCKET}/dashboard/index.html \
     --content-type "text/html" \
     --cache-control "no-cache, max-age=0" \

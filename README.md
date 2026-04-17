@@ -9,7 +9,7 @@
 - [🚀 Quick Deploy (Terraform)](#-quick-deploy-terraform)
 - [Project Overview](#project-overview)
 - [Architecture](#architecture)
-- [Team & Responsibilities](#team--responsibilities)
+- [Implementation Guide](#implementation-guide)
 - [Prerequisites](#prerequisites)
 - [Repository Structure](#repository-structure)
 - [Getting Started](#getting-started)
@@ -55,7 +55,7 @@ This project creates an **automated carbon footprint optimization system** by in
 
 ## Architecture
 
-The dashboard now uses a **cached billing snapshot architecture** so regular page refreshes do not keep calling AWS Cost Explorer.
+The dashboard uses a **cached billing snapshot architecture** so regular page refreshes do not keep calling AWS Cost Explorer.
 
 ![Carbon Optimizer Architecture](docs/assets/architecture-diagram.png)
 
@@ -67,16 +67,16 @@ Flow summary:
 
 ---
 
-## Team & Responsibilities
+## Implementation Guide
 
-| Section | Responsibility | Member |
-|---------|---------------|--------|
-| [Section 1](sections/section-1-iam-dynamodb.md) | IAM Roles & DynamoDB Setup | Kehan Shaikh |
-| [Section 2](sections/section-2-lambda.md) | Lambda Function Development | Soham Kulkarni |
-| [Section 3](sections/section-3-sns-eventbridge.md) | SNS Notifications & EventBridge Schedules | Atharva Jadhav |
-| [Section 4](sections/section-4-cur-ssm.md) | Cost & Usage Reports + SSM Configuration | Priyank Adhav |
-| [Section 5](sections/section-5-dashboard.md) | Real-Time Dashboard & GUI | Atharva Jadhav |
-| [Section 6](sections/section-6-testing-cleanup.md) | Validation, Testing & Cleanup | Abhishek Abhang |
+| Section | Responsibility |
+|---------|----------------|
+| [Section 1](sections/section-1-iam-dynamodb.md) | IAM Roles & DynamoDB Setup |
+| [Section 2](sections/section-2-lambda.md) | Lambda Function Development |
+| [Section 3](sections/section-3-sns-eventbridge.md) | SNS Notifications & EventBridge Schedules |
+| [Section 4](sections/section-4-cur-ssm.md) | Cost & Usage Reports + SSM Configuration |
+| [Section 5](sections/section-5-dashboard.md) | Real-Time Dashboard & GUI |
+| [Section 6](sections/section-6-testing-cleanup.md) | Validation, Testing & Cleanup |
 
 > ⚠️ Sections must be deployed in order (1 → 2 → 3 → 4 → 5 → 6). Each section depends on the previous.
 
@@ -84,7 +84,7 @@ Flow summary:
 
 ## Prerequisites
 
-Before starting, ensure all team members have:
+Before starting, ensure you have:
 
 - [ ] AWS account with billing/cost management permissions
 - [ ] AWS CLI v2 installed and configured (`aws --version`)
@@ -182,12 +182,12 @@ echo "Project: ${PROJECT_NAME}"
 
 ### 3. Follow Section Guides in Order
 
-- **Kehan** → [`sections/section-1-iam-dynamodb.md`](sections/section-1-iam-dynamodb.md)
-- **Soham** → [`sections/section-2-lambda.md`](sections/section-2-lambda.md)
-- **Atharva** → [`sections/section-3-sns-eventbridge.md`](sections/section-3-sns-eventbridge.md)
-- **Priyank** → [`sections/section-4-cur-ssm.md`](sections/section-4-cur-ssm.md)
-- **Atharva** → [`sections/section-5-dashboard.md`](sections/section-5-dashboard.md)
-- **Abhishek** → [`sections/section-6-testing-cleanup.md`](sections/section-6-testing-cleanup.md)
+- [`sections/section-1-iam-dynamodb.md`](sections/section-1-iam-dynamodb.md)
+- [`sections/section-2-lambda.md`](sections/section-2-lambda.md)
+- [`sections/section-3-sns-eventbridge.md`](sections/section-3-sns-eventbridge.md)
+- [`sections/section-4-cur-ssm.md`](sections/section-4-cur-ssm.md)
+- [`sections/section-5-dashboard.md`](sections/section-5-dashboard.md)
+- [`sections/section-6-testing-cleanup.md`](sections/section-6-testing-cleanup.md)
 
 ---
 

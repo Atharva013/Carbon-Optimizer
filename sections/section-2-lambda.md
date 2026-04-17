@@ -1,6 +1,5 @@
 # Section 2 — Lambda Function Development
 
-**Assigned To:** Soham Kulkarni
 **Estimated Time:** 3–4 hours  
 **Branch:** `feature/section-2-lambda`  
 **Dependencies:** Section 1 must be merged (IAM Role ARN required)
@@ -421,6 +420,6 @@ aws lambda invoke \
 2. Open a PR to `main` titled: **"Section 2: Lambda Function Development"**
 3. Add label: `backend`
 4. Paste Lambda function ARN and test invocation output in the PR description
-5. Request review from Team Member 5 (testing lead)
+5. Review the Lambda ARN and validation output before merging
 
 > ⚠️ **Section 3 (EventBridge)** depends on the Lambda function ARN from this section.

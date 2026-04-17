@@ -1,6 +1,5 @@
 # Section 1 — IAM Roles & DynamoDB Setup
 
-**Assigned To:** Kehan Shaikh  
 **Estimated Time:** 2–3 hours  
 **Branch:** `feature/section-1-iam-dynamodb`  
 **Dependencies:** None (this section must be completed first)
@@ -323,7 +322,7 @@ aws dynamodb describe-table \
 1. Push your branch: `git push origin feature/section-1-iam-dynamodb`
 2. Open a PR to `main` titled: **"Section 1: IAM Roles & DynamoDB Setup"**
 3. Add label: `infrastructure`
-4. Request review from Team Member 5 (testing lead)
+4. Review the changes and validation output before merging
 5. Paste verification output in the PR description
 
 > ⚠️ **Sections 2, 3, and 4 depend on this section.** Do not merge until all verification checks pass.

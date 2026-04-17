@@ -1,6 +1,5 @@
 # Section 4 — Cost & Usage Reports + Systems Manager Configuration
 
-**Assigned To:** Priyank Adhav
 **Estimated Time:** 2–3 hours  
 **Branch:** `feature/section-4-cur-ssm`  
 **Dependencies:** Section 1 (S3 bucket must exist)
@@ -342,4 +341,4 @@ aws s3api get-bucket-policy --bucket ${S3_BUCKET} --query 'Policy' | python3 -m 
 2. Open a PR to `main` titled: **"Section 4: Cost & Usage Reports + SSM Configuration"**
 3. Add label: `configuration`
 4. Paste CUR describe output and SSM get-parameter output in the PR description
-5. Request review from Team Member 5 (testing lead)
+5. Review the CUR and SSM verification output before merging

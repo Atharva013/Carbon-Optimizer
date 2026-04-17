@@ -83,13 +83,14 @@ Edit `terraform.tfvars` before deploying:
 ## After Deployment
 
 1. **Open the dashboard** — the URL is shown in the Terraform output
-2. **Run the analyzer** to populate initial data:
+2. **Run the analyzer** to populate the cached billing snapshot:
    ```bash
    aws lambda invoke \
      --function-name carbon-optimizer-cloud-analyzer \
      --payload '{}' /tmp/response.json && cat /tmp/response.json
    ```
 3. **Confirm SNS email** (if you provided one) by clicking the link in the AWS notification email
+4. **Open the dashboard again** — it now reads the DynamoDB snapshot instead of querying Cost Explorer on every refresh
 
 ## Customization
 
@@ -126,5 +127,5 @@ terraform destroy    # Type 'yes' to confirm
 |-------|----------|
 | `AccessDenied` on `ce:GetCostAndUsage` | Your IAM user needs `ce:*` permissions |
 | Dashboard shows no data | Run the analyzer Lambda manually (see step 2) |
-| SNS email not received | Check spam folder, or re-run `terraform apply` |
+| SNS email not received | Confirm the email subscription, then invoke the analyzer once. Alerts send when usage crosses the configured threshold or high-impact actions are found |
 | `BucketAlreadyExists` | Change `project_name` in tfvars to a unique name |

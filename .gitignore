@@ -131,6 +131,7 @@ cython_debug/
 # Cursor
 .cursorignore
 .cursorindexingignore
+.codex/
 
 # ── Project-specific ──
 
@@ -141,6 +142,7 @@ lambda-function.zip
 # Local environment files
 .env
 .env.*
+!.env.example
 *.local
 
 # Temp files
@@ -150,6 +152,7 @@ lambda-function.zip
 # AWS CLI artifacts
 aws-exports.json
 awscliv2.zip
+aws/
 
 # JSON policy files generated at runtime (contain env vars)
 cur-definition.json

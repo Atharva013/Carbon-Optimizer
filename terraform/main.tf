@@ -273,7 +273,7 @@ resource "aws_ssm_parameter" "sustainability_config" {
       right_sizing         = true
     }
     notification_settings = {
-      email_threshold = 50
+      email_threshold = 10
       weekly_summary  = true
     }
   })

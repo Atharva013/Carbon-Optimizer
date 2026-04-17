@@ -156,6 +156,7 @@ carbon-optimizer/
 │
 ├── scripts/                         # Shell deploy scripts (manual path)
 │   ├── setup.sh                     # Initial resource creation
+│   ├── deploy-analyzer.sh           # Analyzer Lambda packaging + deploy
 │   ├── deploy.sh                    # SNS + EventBridge + CUR + SSM
 │   ├── deploy-dashboard.sh          # Dashboard Lambda + API + S3
 │   ├── deploy-cloudfront.sh         # Optional HTTPS via CloudFront
@@ -225,13 +226,18 @@ See [terraform/README.md](terraform/README.md) for full details.
 Run sections **in order** (Sections 1–5 deploy; Section 6 validates):
 
 ```bash
-# Source environment
-source .env   # or set exports manually
+# Optional: create a local env file for convenience
+cp .env.example .env
+source .env   # or export vars manually
 
 # Full deployment
 bash scripts/setup.sh              # IAM + DynamoDB + S3
+bash scripts/deploy-analyzer.sh    # Analyzer Lambda
 bash scripts/deploy.sh             # SNS + EventBridge + CUR + SSM
 bash scripts/deploy-dashboard.sh   # Dashboard Lambda + API Gateway + S3 upload
+
+# Trigger one fresh billing snapshot for the dashboard
+aws lambda invoke --function-name ${PROJECT_NAME}-analyzer --payload '{}' /tmp/r.json && cat /tmp/r.json
 
 # Optional: HTTPS via CloudFront (takes 5-10 minutes)
 bash scripts/deploy-cloudfront.sh

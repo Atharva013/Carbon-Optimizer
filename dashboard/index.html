@@ -190,17 +190,6 @@
 <!-- Controls Bar -->
 <div class="controls-bar" id="controls-bar">
   <div class="ctrl-group">
-    <span class="ctrl-label">Cost Metric</span>
-    <select class="ctrl-select" id="cost-type-select" onchange="onCostTypeChange(this.value)">
-      <option value="unblended">Unblended Cost</option>
-      <option value="blended">Blended Cost</option>
-      <option value="net_unblended">Net Unblended (after credits)</option>
-    </select>
-  </div>
-
-  <div class="ctrl-divider"></div>
-
-  <div class="ctrl-group">
     <span class="ctrl-label">Auto-Refresh</span>
     <select class="ctrl-select" id="refresh-interval-select" onchange="onRefreshIntervalChange(this.value)">
       <option value="0">⏸ Paused</option>
@@ -212,14 +201,10 @@
     <button class="ctrl-btn" id="pause-btn" onclick="togglePause()" title="Pause/Resume auto-refresh">⏸ Pause</button>
   </div>
 
-  <div class="ctrl-divider"></div>
-
-  <span class="cost-type-badge" id="cost-type-badge">Unblended Cost</span>
-
   <div class="api-cost-warn">
-    <span>API calls this session:</span>
+    <span>Dashboard requests:</span>
     <span class="warn-val" id="api-call-count">0</span>
-    <span>(≈ $<span class="warn-val" id="api-call-cost">0.00</span>)</span>
+    <span>(session only)</span>
   </div>
 </div>
 
@@ -289,7 +274,7 @@
   <!-- ── LIVE SERVICES SECTION ── -->
   <div class="section-label">
     Live AWS Services
-    <span class="live-tag"><span class="live-tag-dot"></span>Cost Explorer · Last 7 days</span>
+    <span class="live-tag"><span class="live-tag-dot"></span>Analyzer Snapshot · Last 7 days</span>
   </div>
   <div class="live-services-grid fade-in" style="animation-delay:0.25s">
     <div class="chart-card">
@@ -297,7 +282,7 @@
         <div class="chart-title">Currently Active AWS Services</div>
         <span id="live-active-badge" style="font-size:11px;font-family:var(--mono);color:var(--text3);">—</span>
       </div>
-      <div class="chart-subtitle">All services that have generated usage or cost in your account (last 7 days)</div>
+      <div class="chart-subtitle">Cached from the analyzer Lambda to avoid repeated Cost Explorer charges</div>
       <div style="overflow-x:auto;">
         <table class="service-table">
           <thead>
@@ -310,7 +295,7 @@
             </tr>
           </thead>
           <tbody id="live-tbody">
-            <tr><td colspan="5"><div class="empty-state"><div class="icon">⏳</div>Fetching from Cost Explorer…</div></td></tr>
+            <tr><td colspan="5"><div class="empty-state"><div class="icon">⏳</div>Loading latest analyzer snapshot…</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -355,9 +340,9 @@
       <span style="font-family:var(--mono);color:var(--blue)">This Dashboard</span>
     </div>
     <div style="margin-left:auto;display:flex;gap:1.5rem;font-size:11px;font-family:var(--mono);">
-      <span style="color:var(--text3)">Region: <span style="color:var(--green)">ap-south-1</span></span>
-      <span style="color:var(--text3)">Table: <span style="color:var(--green)">carbon-optimizer-cloud-metrics</span></span>
-      <span style="color:var(--text3)">Refreshes: <span style="color:var(--green)">60s</span></span>
+      <span style="color:var(--text3)">Source: <span style="color:var(--green)" id="meta-source">dynamodb-snapshot</span></span>
+      <span style="color:var(--text3)">Table: <span style="color:var(--green)" id="meta-table">loading…</span></span>
+      <span style="color:var(--text3)">Refresh: <span style="color:var(--green)">configurable</span></span>
     </div>
   </div>
 </main>
@@ -392,19 +377,9 @@
   }
   function savePrefs(p) { localStorage.setItem(PREFS_KEY, JSON.stringify(p)); }
 
-  function getSelectedCostType() {
-    return document.getElementById('cost-type-select').value;
-  }
+  function getSelectedCostType() { return 'unblended'; }
   function getRefreshInterval() {
     return parseInt(document.getElementById('refresh-interval-select').value, 10);
-  }
-
-  // ── Cost type change handler ──
-  function onCostTypeChange(val) {
-    const p = loadPrefs(); p.costType = val; savePrefs(p);
-    const labels = { 'unblended': 'Unblended Cost', 'blended': 'Blended Cost', 'net_unblended': 'Net Unblended (after credits)' };
-    document.getElementById('cost-type-badge').textContent = labels[val] || val;
-    refreshAll(true);
   }
 
   // ── Refresh interval change handler ──
@@ -469,7 +444,6 @@
   function trackApiCall() {
     apiCallCount++;
     document.getElementById('api-call-count').textContent = apiCallCount;
-    document.getElementById('api-call-cost').textContent = (apiCallCount * 0.01).toFixed(2);
   }
 
   // ── FIXED: Smart cost formatter — shows sub-cent values correctly ──
@@ -556,7 +530,10 @@
       document.getElementById('kpi-score').textContent    = fmt(s.optimization_potential, 1) + '%';
       document.getElementById('kpi-high-count').textContent = s.high_impact_count || '0';
 
-      if (s.estimated_cost_savings > 0)
+      if (s.credits_applied_usd > 0)
+        document.getElementById('kpi-savings-label').textContent =
+          'Credits offset ' + fmtCost(s.credits_applied_usd);
+      else if (s.estimated_cost_savings > 0)
         document.getElementById('kpi-savings-label').textContent =
           '↓ Save ' + fmtCost(s.estimated_cost_savings) + '/mo';
 
@@ -564,11 +541,13 @@
         document.getElementById('kpi-carbon-savings-label').textContent =
           '↓ Reduce ' + fmt(s.estimated_carbon_savings) + ' kg CO₂';
 
-      const ts = (s.last_timestamp && s.last_timestamp !== 'N/A')
-        ? new Date(s.last_timestamp).toLocaleString()
-        : s.last_updated;
-      document.getElementById('last-sync').textContent   = 'Last analysis: ' + ts;
+      const ts = s.last_updated && s.last_updated !== 'Live'
+        ? s.last_updated
+        : new Date().toLocaleString();
+      document.getElementById('last-sync').textContent   = 'Last refresh: ' + ts;
       document.getElementById('footer-ts').textContent   = 'Updated: ' + new Date().toLocaleTimeString();
+      document.getElementById('meta-source').textContent = s.data_source || 'dynamodb-snapshot';
+      document.getElementById('meta-table').textContent  = s.table_name || '—';
     } catch (e) {
       showError('Summary error: ' + e.message);
     }
@@ -749,7 +728,7 @@
       }
 
       if (!services.length) {
-        tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">📡</div>No service data from Cost Explorer.</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">📡</div>No cached service data yet.</div></td></tr>`;
         return;
       }
 
@@ -775,7 +754,7 @@
       tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">
         <div class="icon">⚠️</div>${e.message}<br>
         <span style="font-size:11px;margin-top:6px;display:block">
-          Make sure the dashboard Lambda role has <code>ce:GetCostAndUsage</code> permission.
+          Run the analyzer Lambda once so it can write a fresh billing snapshot to DynamoDB.
         </span>
       </div></td></tr>`;
     }
@@ -808,12 +787,7 @@
   // ── Restore preferences on load ──
   (function initPrefs() {
     const p = loadPrefs();
-    if (p.costType) {
-      document.getElementById('cost-type-select').value = p.costType;
-      const labels = { 'unblended': 'Unblended Cost', 'blended': 'Blended Cost', 'net_unblended': 'Net Unblended (after credits)' };
-      document.getElementById('cost-type-badge').textContent = labels[p.costType] || p.costType;
-    }
-    const interval = p.refreshInterval !== undefined ? p.refreshInterval : 300;
+    const interval = p.refreshInterval !== undefined ? p.refreshInterval : 1800;
     document.getElementById('refresh-interval-select').value = String(interval);
     setupAutoRefresh(interval);
   })();

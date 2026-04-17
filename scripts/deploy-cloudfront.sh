@@ -3,11 +3,12 @@
 # Section 5b — CloudFront HTTPS Deploy (Idempotent)
 # Deploys: CloudFront Distribution in front of S3 Static Website for HTTPS
 # =============================================================================
-set -e
+set -euo pipefail
 
 export AWS_REGION=${AWS_REGION:-ap-south-1}
 export PROJECT_NAME=${PROJECT_NAME:-carbon-optimizer-cloud}
 export S3_BUCKET=${S3_BUCKET:-${PROJECT_NAME}-data}
+export AWS_PAGER=""
 
 echo "=================================================="
 echo "  Carbon Optimizer — CloudFront HTTPS Deploy"
@@ -15,18 +16,29 @@ echo "  Project : ${PROJECT_NAME}"
 echo "=================================================="
 
 S3_DOMAIN="${S3_BUCKET}.s3-website.${AWS_REGION}.amazonaws.com"
+CF_CONFIG_FILE="/tmp/cf-config.json"
+CF_OUTPUT_FILE="/tmp/cf-out.json"
+
+echo "  Verifying S3 static website hosting on ${S3_BUCKET}..."
+if ! aws s3api get-bucket-website --bucket "${S3_BUCKET}" >/dev/null; then
+    echo "❌ S3 static website hosting is not enabled for ${S3_BUCKET}."
+    echo "   Run bash scripts/deploy-dashboard.sh first, then retry."
+    exit 1
+fi
+echo "✅ S3 website endpoint detected: ${S3_DOMAIN}"
 
 # Check if distribution already exists using the exact DomainName
 DIST_ID=$(aws cloudfront list-distributions \
     --query "DistributionList.Items[?Origins.Items[0].DomainName=='${S3_DOMAIN}'].Id" \
-    --output text 2>/dev/null | head -1)
+    --output text | head -1)
 
 if [ -z "${DIST_ID}" ] || [ "${DIST_ID}" == "None" ]; then
-    echo "  Creating CloudFront Distribution. This will take multiple minutes..."
+    echo "  Creating CloudFront distribution..."
+    echo "  The API call usually returns quickly; global HTTPS propagation takes 5-10 minutes."
 
     CALLER_REF=$(date +%s)
 
-    cat > /tmp/cf-config.json << EOF
+    cat > "${CF_CONFIG_FILE}" << EOF
 {
     "CallerReference": "${CALLER_REF}",
     "Aliases": { "Quantity": 0 },
@@ -83,17 +95,18 @@ if [ -z "${DIST_ID}" ] || [ "${DIST_ID}" == "None" ]; then
 EOF
 
     aws cloudfront create-distribution \
-        --distribution-config file:///tmp/cf-config.json \
-        --tags "Items=[{Key=Project,Value=${PROJECT_NAME}}]" > /tmp/cf-out.json 2>/dev/null
+        --distribution-config "file://${CF_CONFIG_FILE}" \
+        --output json > "${CF_OUTPUT_FILE}"
 
-    DIST_ID=$(cat /tmp/cf-out.json | python3 -c "import sys,json; print(json.load(sys.stdin)['Distribution']['Id'])")
-    DIST_DOMAIN=$(cat /tmp/cf-out.json | python3 -c "import sys,json; print(json.load(sys.stdin)['Distribution']['DomainName'])")
+    DIST_ID=$(python3 -c "import json; print(json.load(open('${CF_OUTPUT_FILE}'))['Distribution']['Id'])")
+    DIST_DOMAIN=$(python3 -c "import json; print(json.load(open('${CF_OUTPUT_FILE}'))['Distribution']['DomainName'])")
+    DIST_STATUS=$(python3 -c "import json; print(json.load(open('${CF_OUTPUT_FILE}'))['Distribution']['Status'])")
 
     echo "✅ Distribution created: ${DIST_ID}"
-    echo "   Status: IN_PROGRESS (propagation takes 5-10 minutes)"
+    echo "   Initial status: ${DIST_STATUS}"
 else
     echo "✅ Distribution already exists: ${DIST_ID}"
-    DIST_DOMAIN=$(aws cloudfront get-distribution --id ${DIST_ID} --query 'Distribution.DomainName' --output text 2>/dev/null)
+    DIST_DOMAIN=$(aws cloudfront get-distribution --id "${DIST_ID}" --query 'Distribution.DomainName' --output text)
 fi
 
 echo ""

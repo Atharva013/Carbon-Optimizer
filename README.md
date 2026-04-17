@@ -55,32 +55,15 @@ This project creates an **automated carbon footprint optimization system** by in
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         DATA SOURCES                            │
-│   Cost Explorer API   │   CUR Reports   │  Carbon Footprint Tool│
-└──────────┬────────────┴────────┬────────┴────────────┬──────────┘
-           │                     │                     │
-           ▼                     ▼                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       AUTOMATION LAYER                          │
-│      EventBridge Scheduler  ──►  Lambda Function  ◄──  S3       │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-           ┌────────────────────┼────────────────────┐
-           ▼                    ▼                    ▼
-┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-│   DynamoDB       │  │   SNS Topic      │  │ Systems Manager  │
-│  (Metrics Store) │  │ (Notifications)  │  │  (Config Store)  │
-└──────────────────┘  └──────────────────┘  └──────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     DASHBOARD LAYER (Section 5)                 │
-│   S3 Static Site  ◄──  API Gateway  ──►  Lambda (Data API)     │
-│   Real-time Charts │ Metrics Display │ Recommendations Panel   │
-└─────────────────────────────────────────────────────────────────┘
-```
+The dashboard now uses a **cached billing snapshot architecture** so regular page refreshes do not keep calling AWS Cost Explorer.
+
+![Carbon Optimizer Architecture](docs/assets/architecture-diagram.png)
+
+Flow summary:
+- EventBridge runs the analyzer Lambda on a schedule.
+- The analyzer reads AWS billing/config data, computes carbon insights, and stores a snapshot in DynamoDB.
+- SNS sends alert emails when the configured threshold or recommendation rules are triggered.
+- The dashboard API reads the cached DynamoDB snapshot, and S3/CloudFront serve the UI over HTTP/HTTPS.
 
 ---
 

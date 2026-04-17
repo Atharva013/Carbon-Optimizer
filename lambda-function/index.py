@@ -82,7 +82,7 @@ DEFAULT_CONFIG = {
     },
     "notification_settings": {
         "email_threshold": 10,
-        "weekly_summary": True,
+        "weekly_summary": False,
     },
 }
 
@@ -129,8 +129,18 @@ def lambda_handler(event, context):
         )
 
         summary = snapshot["overall"]
-        if should_send_notification(summary, recommendations_by_type, config):
-            send_optimization_notifications(summary, recommendations_by_type, config)
+        notification_state = get_notification_state()
+        notification_decision = evaluate_notification_decision(
+            summary, recommendations_by_type, config, notification_state
+        )
+        if notification_decision["should_send"]:
+            send_optimization_notifications(
+                summary,
+                recommendations_by_type,
+                config,
+                notification_decision["reasons"],
+            )
+        save_notification_state(summary, recommendations_by_type, notification_decision)
 
         return {
             "statusCode": 200,
@@ -555,21 +565,87 @@ def build_overall_snapshot(
     return {"ddb_item": ddb_item, "response": response}
 
 
-def should_send_notification(summary, recommendations_by_type, config):
-    """Send alerts for meaningful usage or clear optimization wins."""
+def get_notification_state():
+    """Return the latest notification state used to prevent duplicate emails."""
+    try:
+        response = table.get_item(
+            Key={"MetricType": "NOTIFICATION_STATE", "Timestamp": "LATEST"}
+        )
+        item = response.get("Item", {})
+        return {
+            "threshold_exceeded": bool(item.get("ThresholdExceeded", False)),
+            "high_impact_active": bool(item.get("HighImpactActive", False)),
+            "last_notification_at": item.get("LastNotificationAt"),
+        }
+    except Exception as exc:
+        logger.warning("Falling back to empty notification state: %s", exc)
+        return {
+            "threshold_exceeded": False,
+            "high_impact_active": False,
+            "last_notification_at": None,
+        }
+
+
+def evaluate_notification_decision(summary, recommendations_by_type, config, state):
+    """Send only on state changes, not on every analyzer run."""
     threshold = float(config.get("notification_settings", {}).get("email_threshold", 10))
-    unblended_usage = summary["cost_by_type"]["UnblendedCost"]
-    high_impact = recommendations_by_type["UnblendedCost"]["high_impact_actions"]
-    return bool(high_impact) or unblended_usage >= threshold
+    gross_usage = summary["cost_by_type"]["UnblendedCost"]
+    high_impact_count = len(recommendations_by_type["UnblendedCost"]["high_impact_actions"])
+
+    threshold_exceeded = gross_usage >= threshold
+    high_impact_active = high_impact_count > 0
+    reasons = []
+
+    if threshold_exceeded and not state.get("threshold_exceeded", False):
+        reasons.append("threshold_crossed")
+    if high_impact_active and not state.get("high_impact_active", False):
+        reasons.append("high_impact_detected")
+
+    return {
+        "should_send": bool(reasons),
+        "reasons": reasons,
+        "threshold_exceeded": threshold_exceeded,
+        "high_impact_active": high_impact_active,
+    }
 
 
-def send_optimization_notifications(summary, recommendations_by_type, config):
+def save_notification_state(summary, recommendations_by_type, notification_decision):
+    """Persist the current notification state so future runs can dedupe alerts."""
+    timestamp = summary["snapshot_timestamp"]
+    if notification_decision["should_send"]:
+        last_notification_at = timestamp
+    else:
+        previous_state = get_notification_state()
+        last_notification_at = previous_state.get("last_notification_at")
+
+    table.put_item(
+        Item={
+            "MetricType": "NOTIFICATION_STATE",
+            "Timestamp": "LATEST",
+            "ServiceName": "NOTIFICATIONS",
+            "SnapshotTimestamp": timestamp,
+            "ThresholdExceeded": notification_decision["threshold_exceeded"],
+            "HighImpactActive": notification_decision["high_impact_active"],
+            "HighImpactCount": len(
+                recommendations_by_type["UnblendedCost"]["high_impact_actions"]
+            ),
+            "GrossUsageUnblended": dec(summary["cost_by_type"]["UnblendedCost"]),
+            "LastNotificationAt": last_notification_at or "",
+        }
+    )
+
+
+def send_optimization_notifications(summary, recommendations_by_type, config, reasons):
     """Send SNS notification about meaningful cost or optimization activity."""
     recommendations = recommendations_by_type["UnblendedCost"]
     threshold = float(config.get("notification_settings", {}).get("email_threshold", 10))
     gross_usage = summary["cost_by_type"]["UnblendedCost"]
     credits = summary["credits_by_type"]["UnblendedCost"]
     net_cost = summary["net_cost_by_type"]["UnblendedCost"]
+    reason_labels = {
+        "threshold_crossed": "month-to-date usage crossed the alert threshold",
+        "high_impact_detected": "new high-impact optimization opportunities were detected",
+    }
 
     lines = [
         "Carbon Optimizer Billing Snapshot",
@@ -579,6 +655,7 @@ def send_optimization_notifications(summary, recommendations_by_type, config):
         f"Credits applied (30d): ${credits:.4f}",
         f"Net billed after credits: ${net_cost:.4f}",
         f"Alert threshold: ${threshold:.2f}",
+        f"Alert reason: {', '.join(reason_labels[reason] for reason in reasons)}",
         "",
         f"High-impact opportunities: {len(recommendations['high_impact_actions'])}",
     ]
@@ -599,7 +676,7 @@ def send_optimization_notifications(summary, recommendations_by_type, config):
             [
                 "",
                 "No high-impact actions crossed the configured threshold yet.",
-                "This alert was sent because your month-to-date AWS usage exceeded the notification threshold.",
+                "This alert was sent only because your month-to-date AWS usage crossed the notification threshold.",
             ]
         )
 

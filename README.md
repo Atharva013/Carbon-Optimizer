@@ -6,7 +6,7 @@
 
 ## 📋 Table of Contents
 
-- [🚀 Quick Deploy (Terraform)](#-quick-deploy-terraform)
+- [Quick Deploy (Terraform)](#-quick-deploy-terraform)
 - [Project Overview](#project-overview)
 - [Architecture](#architecture)
 - [Implementation Guide](#implementation-guide)
@@ -21,7 +21,7 @@
 
 ---
 
-## 🚀 Quick Deploy (Terraform)
+## Quick Deploy (Terraform)
 
 **Want to skip the step-by-step sections?** Deploy the entire stack in under 5 minutes:
 

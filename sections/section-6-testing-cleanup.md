@@ -1,6 +1,5 @@
 # Section 6 — Validation, Testing & Cleanup
 
-**Assigned To:** Abhishek Abhang  
 **Estimated Time:** 3–4 hours  
 **Branch:** `feature/section-6-testing-cleanup`  
 **Dependencies:** All previous sections (1–5) must be merged and deployed

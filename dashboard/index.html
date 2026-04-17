@@ -131,9 +131,46 @@
   @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   .error-banner { background: var(--red-dim); border: 1px solid var(--red); border-radius: 8px; padding: 12px 16px; font-size: 12px; color: var(--red); margin-bottom: 1rem; display: none; }
 
+  /* ── Controls bar ── */
+  .controls-bar {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    padding: 8px 2rem; display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;
+    font-size: 12px; color: var(--text2);
+  }
+  .ctrl-group { display: flex; align-items: center; gap: 6px; }
+  .ctrl-label { font-size: 10px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; color: var(--text3); }
+  .ctrl-select {
+    background: var(--bg3); border: 1px solid var(--border2); color: var(--text);
+    border-radius: 6px; padding: 4px 8px; font-size: 11px; font-family: var(--mono);
+    cursor: pointer; outline: none; transition: border-color 0.2s;
+    -webkit-appearance: auto;
+    appearance: auto;
+  }
+  .ctrl-select:hover, .ctrl-select:focus { border-color: var(--green); }
+  .ctrl-btn {
+    background: var(--bg3); border: 1px solid var(--border2); color: var(--text2);
+    border-radius: 6px; padding: 4px 10px; font-size: 11px; font-family: var(--mono);
+    cursor: pointer; transition: all 0.2s; white-space: nowrap;
+  }
+  .ctrl-btn:hover { border-color: var(--green); color: var(--green); }
+  .ctrl-btn.active { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+  .ctrl-btn.paused { background: var(--red-dim); border-color: var(--red); color: var(--red); }
+  .ctrl-divider { width: 1px; height: 20px; background: var(--border); }
+  .cost-type-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--blue-dim); border: 1px solid rgba(64,196,255,0.3);
+    border-radius: 4px; padding: 2px 8px;
+    font-size: 10px; font-family: var(--mono); color: var(--blue);
+  }
+  .api-cost-warn {
+    margin-left: auto; font-size: 10px; font-family: var(--mono); color: var(--text3);
+    display: flex; align-items: center; gap: 4px;
+  }
+  .api-cost-warn .warn-val { color: var(--amber); font-weight: 500; }
+
   @media (max-width: 1100px) { .charts-row { grid-template-columns: 1fr 1fr; } .charts-row .chart-card:last-child { grid-column: span 2; } }
-  @media (max-width: 800px)  { .kpi-grid { grid-template-columns: 1fr 1fr; } .charts-row, .bottom-row { grid-template-columns: 1fr; } .charts-row .chart-card:last-child { grid-column: auto; } main { padding: 1rem; } }
-  @media (max-width: 480px)  { .kpi-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 800px)  { .kpi-grid { grid-template-columns: 1fr 1fr; } .charts-row, .bottom-row { grid-template-columns: 1fr; } .charts-row .chart-card:last-child { grid-column: auto; } main { padding: 1rem; } .controls-bar { padding: 8px 1rem; } }
+  @media (max-width: 480px)  { .kpi-grid { grid-template-columns: 1fr; } .api-cost-warn { display: none; } }
 </style>
 </head>
 <body>
@@ -144,11 +181,32 @@
     <div><div class="logo-text">Carbon<span>Optimizer</span></div></div>
   </div>
   <div class="header-right">
-    <div class="status-pill"><div class="status-dot"></div>LIVE</div>
+    <div class="status-pill" id="status-pill"><div class="status-dot" id="status-dot"></div><span id="status-text">LIVE</span></div>
     <span class="last-sync" id="last-sync">syncing…</span>
     <button class="refresh-btn" onclick="refreshAll(true)" id="refresh-btn">↻ Refresh</button>
   </div>
 </header>
+
+<!-- Controls Bar -->
+<div class="controls-bar" id="controls-bar">
+  <div class="ctrl-group">
+    <span class="ctrl-label">Auto-Refresh</span>
+    <select class="ctrl-select" id="refresh-interval-select" onchange="onRefreshIntervalChange(this.value)">
+      <option value="0">⏸ Paused</option>
+      <option value="60">1 min</option>
+      <option value="300" selected>5 min</option>
+      <option value="600">10 min</option>
+      <option value="1800">30 min</option>
+    </select>
+    <button class="ctrl-btn" id="pause-btn" onclick="togglePause()" title="Pause/Resume auto-refresh">⏸ Pause</button>
+  </div>
+
+  <div class="api-cost-warn">
+    <span>Dashboard requests:</span>
+    <span class="warn-val" id="api-call-count">0</span>
+    <span>(session only)</span>
+  </div>
+</div>
 
 <main>
   <div class="error-banner" id="error-banner"></div>
@@ -216,7 +274,7 @@
   <!-- ── LIVE SERVICES SECTION ── -->
   <div class="section-label">
     Live AWS Services
-    <span class="live-tag"><span class="live-tag-dot"></span>Cost Explorer · Last 7 days</span>
+    <span class="live-tag"><span class="live-tag-dot"></span>Analyzer Snapshot · Last 7 days</span>
   </div>
   <div class="live-services-grid fade-in" style="animation-delay:0.25s">
     <div class="chart-card">
@@ -224,7 +282,7 @@
         <div class="chart-title">Currently Active AWS Services</div>
         <span id="live-active-badge" style="font-size:11px;font-family:var(--mono);color:var(--text3);">—</span>
       </div>
-      <div class="chart-subtitle">All services that have generated usage or cost in your account (last 7 days)</div>
+      <div class="chart-subtitle">Cached from the analyzer Lambda to avoid repeated Cost Explorer charges</div>
       <div style="overflow-x:auto;">
         <table class="service-table">
           <thead>
@@ -237,7 +295,7 @@
             </tr>
           </thead>
           <tbody id="live-tbody">
-            <tr><td colspan="5"><div class="empty-state"><div class="icon">⏳</div>Fetching from Cost Explorer…</div></td></tr>
+            <tr><td colspan="5"><div class="empty-state"><div class="icon">⏳</div>Loading latest analyzer snapshot…</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -282,9 +340,9 @@
       <span style="font-family:var(--mono);color:var(--blue)">This Dashboard</span>
     </div>
     <div style="margin-left:auto;display:flex;gap:1.5rem;font-size:11px;font-family:var(--mono);">
-      <span style="color:var(--text3)">Region: <span style="color:var(--green)">ap-south-1</span></span>
-      <span style="color:var(--text3)">Table: <span style="color:var(--green)">carbon-optimizer-cloud-metrics</span></span>
-      <span style="color:var(--text3)">Refreshes: <span style="color:var(--green)">60s</span></span>
+      <span style="color:var(--text3)">Source: <span style="color:var(--green)" id="meta-source">dynamodb-snapshot</span></span>
+      <span style="color:var(--text3)">Table: <span style="color:var(--green)" id="meta-table">loading…</span></span>
+      <span style="color:var(--text3)">Refresh: <span style="color:var(--green)">configurable</span></span>
     </div>
   </div>
 </main>
@@ -297,7 +355,7 @@
 
 <script>
   // ── Replace this with your actual API Gateway endpoint ──
-  const API = 'https://zcb9ruu2c3.execute-api.ap-south-1.amazonaws.com/prod';
+  const API = 'API_ENDPOINT_PLACEHOLDER';
 
   const COLORS = [
     '#00e676','#40c4ff','#ffab40','#ff5252',
@@ -308,6 +366,85 @@
   let carbonChartInst = null;
   let costChartInst   = null;
   let isLoading       = false;
+  let refreshTimer    = null;
+  let apiCallCount    = 0;
+  let isPaused        = false;
+
+  // ── Preferences (persisted in localStorage) ──
+  const PREFS_KEY = 'carbon-optimizer-prefs';
+  function loadPrefs() {
+    try { return JSON.parse(localStorage.getItem(PREFS_KEY)) || {}; } catch { return {}; }
+  }
+  function savePrefs(p) { localStorage.setItem(PREFS_KEY, JSON.stringify(p)); }
+
+  function getSelectedCostType() { return 'unblended'; }
+  function getRefreshInterval() {
+    return parseInt(document.getElementById('refresh-interval-select').value, 10);
+  }
+
+  // ── Refresh interval change handler ──
+  function onRefreshIntervalChange(val) {
+    const secs = parseInt(val, 10);
+    const p = loadPrefs(); p.refreshInterval = secs; savePrefs(p);
+    setupAutoRefresh(secs);
+  }
+
+  // ── Pause toggle ──
+  function togglePause() {
+    isPaused = !isPaused;
+    const btn = document.getElementById('pause-btn');
+    const pill = document.getElementById('status-pill');
+    const dot = document.getElementById('status-dot');
+    const txt = document.getElementById('status-text');
+    if (isPaused) {
+      btn.textContent = '▶ Resume';
+      btn.classList.add('paused');
+      pill.style.background = 'var(--red-dim)';
+      pill.style.borderColor = 'rgba(255,82,82,0.3)';
+      pill.style.color = 'var(--red)';
+      dot.style.background = 'var(--red)';
+      dot.style.animationPlayState = 'paused';
+      txt.textContent = 'PAUSED';
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+    } else {
+      btn.textContent = '⏸ Pause';
+      btn.classList.remove('paused');
+      pill.style.background = '';
+      pill.style.borderColor = '';
+      pill.style.color = '';
+      dot.style.background = '';
+      dot.style.animationPlayState = '';
+      txt.textContent = 'LIVE';
+      setupAutoRefresh(getRefreshInterval());
+      refreshAll(false);
+    }
+  }
+
+  function setupAutoRefresh(secs) {
+    if (refreshTimer) clearInterval(refreshTimer);
+    refreshTimer = null;
+    const btn = document.getElementById('pause-btn');
+    if (secs <= 0) {
+      isPaused = true;
+      btn.textContent = '▶ Resume';
+      btn.classList.add('paused');
+      document.getElementById('status-text').textContent = 'PAUSED';
+      document.getElementById('status-dot').style.animationPlayState = 'paused';
+    } else {
+      isPaused = false;
+      btn.textContent = '⏸ Pause';
+      btn.classList.remove('paused');
+      document.getElementById('status-text').textContent = 'LIVE';
+      document.getElementById('status-dot').style.animationPlayState = '';
+      refreshTimer = setInterval(() => refreshAll(false), secs * 1000);
+    }
+  }
+
+  function trackApiCall() {
+    apiCallCount++;
+    document.getElementById('api-call-count').textContent = apiCallCount;
+  }
 
   // ── FIXED: Smart cost formatter — shows sub-cent values correctly ──
   function fmtCost(n) {
@@ -366,9 +503,12 @@
   }
 
   async function apiFetch(path, retries = 2) {
+    const sep = path.includes('?') ? '&' : '?';
+    const url = API + path + sep + 'cost_type=' + getSelectedCostType();
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
-        const res = await fetch(API + path);
+        trackApiCall();
+        const res = await fetch(url);
         if (!res.ok) throw new Error(`API ${path} → ${res.status}`);
         return await res.json();
       } catch (e) {
@@ -390,7 +530,10 @@
       document.getElementById('kpi-score').textContent    = fmt(s.optimization_potential, 1) + '%';
       document.getElementById('kpi-high-count').textContent = s.high_impact_count || '0';
 
-      if (s.estimated_cost_savings > 0)
+      if (s.credits_applied_usd > 0)
+        document.getElementById('kpi-savings-label').textContent =
+          'Credits offset ' + fmtCost(s.credits_applied_usd);
+      else if (s.estimated_cost_savings > 0)
         document.getElementById('kpi-savings-label').textContent =
           '↓ Save ' + fmtCost(s.estimated_cost_savings) + '/mo';
 
@@ -398,11 +541,13 @@
         document.getElementById('kpi-carbon-savings-label').textContent =
           '↓ Reduce ' + fmt(s.estimated_carbon_savings) + ' kg CO₂';
 
-      const ts = (s.last_timestamp && s.last_timestamp !== 'N/A')
-        ? new Date(s.last_timestamp).toLocaleString()
-        : s.last_updated;
-      document.getElementById('last-sync').textContent   = 'Last analysis: ' + ts;
+      const ts = s.last_updated && s.last_updated !== 'Live'
+        ? s.last_updated
+        : new Date().toLocaleString();
+      document.getElementById('last-sync').textContent   = 'Last refresh: ' + ts;
       document.getElementById('footer-ts').textContent   = 'Updated: ' + new Date().toLocaleTimeString();
+      document.getElementById('meta-source').textContent = s.data_source || 'dynamodb-snapshot';
+      document.getElementById('meta-table').textContent  = s.table_name || '—';
     } catch (e) {
       showError('Summary error: ' + e.message);
     }
@@ -583,7 +728,7 @@
       }
 
       if (!services.length) {
-        tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">📡</div>No service data from Cost Explorer.</div></td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="icon">📡</div>No cached service data yet.</div></td></tr>`;
         return;
       }
 
@@ -609,7 +754,7 @@
       tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">
         <div class="icon">⚠️</div>${e.message}<br>
         <span style="font-size:11px;margin-top:6px;display:block">
-          Make sure the dashboard Lambda role has <code>ce:GetCostAndUsage</code> permission.
+          Run the analyzer Lambda once so it can write a fresh billing snapshot to DynamoDB.
         </span>
       </div></td></tr>`;
     }
@@ -639,8 +784,15 @@
     }
   }
 
+  // ── Restore preferences on load ──
+  (function initPrefs() {
+    const p = loadPrefs();
+    const interval = p.refreshInterval !== undefined ? p.refreshInterval : 1800;
+    document.getElementById('refresh-interval-select').value = String(interval);
+    setupAutoRefresh(interval);
+  })();
+
   refreshAll();
-  setInterval(() => refreshAll(false), 60000);
 </script>
 </body>
 </html>

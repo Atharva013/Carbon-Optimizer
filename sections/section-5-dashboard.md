@@ -1,6 +1,5 @@
 # Section 5 — Real-Time Dashboard & GUI
 
-**Assigned To:** Atharva Jadhav  
 **Estimated Time:** 3–4 hours  
 **Branch:** `feature/section-5-dashboard`  
 **Dependencies:** Sections 1–4 must be merged and all AWS resources active

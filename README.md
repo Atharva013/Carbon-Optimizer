@@ -6,18 +6,35 @@
 
 ## 📋 Table of Contents
 
+- [🚀 Quick Deploy (Terraform)](#-quick-deploy-terraform)
 - [Project Overview](#project-overview)
 - [Architecture](#architecture)
-- [Team & Responsibilities](#team--responsibilities)
+- [Implementation Guide](#implementation-guide)
 - [Prerequisites](#prerequisites)
 - [Repository Structure](#repository-structure)
 - [Getting Started](#getting-started)
-- [Environment Setup](#environment-setup)
 - [Deployment Guide](#deployment-guide)
 - [Validation & Testing](#validation--testing)
 - [Cleanup](#cleanup)
 - [Contributing](#contributing)
 - [Resources](#resources)
+
+---
+
+## 🚀 Quick Deploy (Terraform)
+
+**Want to skip the step-by-step sections?** Deploy the entire stack in under 5 minutes:
+
+```bash
+git clone https://github.com/Atharva013/Carbon-Optimizer.git
+cd Carbon-Optimizer/terraform
+cp terraform.tfvars.example terraform.tfvars   # edit with your region/email
+terraform init && terraform apply
+```
+
+After deployment, open the **Dashboard URL** shown in the output. For details, see the [Terraform README](terraform/README.md).
+
+> ⚠️ Requires [Terraform ≥ 1.3](https://terraform.io) and [AWS CLI v2](https://aws.amazon.com/cli/) with configured credentials.
 
 ---
 
@@ -38,45 +55,28 @@ This project creates an **automated carbon footprint optimization system** by in
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         DATA SOURCES                            │
-│   Cost Explorer API   │   CUR Reports   │  Carbon Footprint Tool│
-└──────────┬────────────┴────────┬────────┴────────────┬──────────┘
-           │                     │                     │
-           ▼                     ▼                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       AUTOMATION LAYER                          │
-│      EventBridge Scheduler  ──►  Lambda Function  ◄──  S3       │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-           ┌────────────────────┼────────────────────┐
-           ▼                    ▼                    ▼
-┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐
-│   DynamoDB       │  │   SNS Topic      │  │ Systems Manager  │
-│  (Metrics Store) │  │ (Notifications)  │  │  (Config Store)  │
-└──────────────────┘  └──────────────────┘  └──────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     DASHBOARD LAYER (Section 5)                 │
-│   S3 Static Site  ◄──  API Gateway  ──►  Lambda (Data API)     │
-│   Real-time Charts │ Metrics Display │ Recommendations Panel   │
-└─────────────────────────────────────────────────────────────────┘
-```
+The dashboard uses a **cached billing snapshot architecture** so regular page refreshes do not keep calling AWS Cost Explorer.
+
+![Carbon Optimizer Architecture](docs/assets/architecture-diagram.png)
+
+Flow summary:
+- EventBridge runs the analyzer Lambda on a schedule.
+- The analyzer reads AWS billing/config data, computes carbon insights, and stores a snapshot in DynamoDB.
+- SNS sends alert emails when the configured threshold or recommendation rules are triggered.
+- The dashboard API reads the cached DynamoDB snapshot, and S3/CloudFront serve the UI over HTTP/HTTPS.
 
 ---
 
-## Team & Responsibilities
+## Implementation Guide
 
-| Section | Responsibility | Member |
-|---------|---------------|--------|
-| [Section 1](sections/section-1-iam-dynamodb.md) | IAM Roles & DynamoDB Setup | Kehan Shaikh |
-| [Section 2](sections/section-2-lambda.md) | Lambda Function Development | Soham Kulkarni |
-| [Section 3](sections/section-3-sns-eventbridge.md) | SNS Notifications & EventBridge Schedules | Atharva Jadhav |
-| [Section 4](sections/section-4-cur-ssm.md) | Cost & Usage Reports + SSM Configuration | Priyank Adhav |
-| [Section 5](sections/section-5-dashboard.md) | Real-Time Dashboard & GUI | Atharva Jadhav |
-| [Section 6](sections/section-6-testing-cleanup.md) | Validation, Testing & Cleanup | Abhishek Abhang |
+| Section | Responsibility |
+|---------|----------------|
+| [Section 1](sections/section-1-iam-dynamodb.md) | IAM Roles & DynamoDB Setup |
+| [Section 2](sections/section-2-lambda.md) | Lambda Function Development |
+| [Section 3](sections/section-3-sns-eventbridge.md) | SNS Notifications & EventBridge Schedules |
+| [Section 4](sections/section-4-cur-ssm.md) | Cost & Usage Reports + SSM Configuration |
+| [Section 5](sections/section-5-dashboard.md) | Real-Time Dashboard & GUI |
+| [Section 6](sections/section-6-testing-cleanup.md) | Validation, Testing & Cleanup |
 
 > ⚠️ Sections must be deployed in order (1 → 2 → 3 → 4 → 5 → 6). Each section depends on the previous.
 
@@ -84,7 +84,7 @@ This project creates an **automated carbon footprint optimization system** by in
 
 ## Prerequisites
 
-Before starting, ensure all team members have:
+Before starting, ensure you have:
 
 - [ ] AWS account with billing/cost management permissions
 - [ ] AWS CLI v2 installed and configured (`aws --version`)
@@ -104,21 +104,26 @@ carbon-optimizer/
 ├── CHANGELOG.md                     # Version history
 ├── .gitignore                       # Ignored files
 │
+├── terraform/                       # ⚡ One-command deploy (recommended)
+│   ├── main.tf                      # All AWS resources
+│   ├── variables.tf                 # User configuration
+│   ├── outputs.tf                   # Dashboard URL & endpoints
+│   ├── terraform.tfvars.example     # Example config (copy to .tfvars)
+│   └── README.md                    # Terraform quick-start guide
+│
 ├── sections/                        # Per-member task breakdowns
 │   ├── section-1-iam-dynamodb.md
 │   ├── section-2-lambda.md
 │   ├── section-3-sns-eventbridge.md
 │   ├── section-4-cur-ssm.md
-│   ├── section-5-dashboard.md       ← NEW: Real-time Dashboard
-│   └── section-6-testing-cleanup.md ← Renamed from section-5
+│   ├── section-5-dashboard.md
+│   └── section-6-testing-cleanup.md
 │
 ├── docs/                            # Project documentation
-│   ├── architecture.md
-│   ├── environment-setup.md
 │   └── github-project-setup.md
 │
 ├── lambda-function/                 # Lambda source code
-│   └── index.py
+│   └── index.py                     # Carbon footprint analyzer
 │
 ├── dashboard/                       # Dashboard source (Section 5)
 │   ├── index.html                   # Main dashboard UI
@@ -132,15 +137,18 @@ carbon-optimizer/
 ├── cloudformation/                  # CloudFormation templates
 │   └── sustainable-infrastructure.yaml
 │
-├── scripts/                         # Helper shell scripts
-│   ├── setup.sh
-│   ├── deploy.sh
-│   ├── validate.sh
-│   └── cleanup.sh
+├── scripts/                         # Shell deploy scripts (manual path)
+│   ├── setup.sh                     # Initial resource creation
+│   ├── deploy-analyzer.sh           # Analyzer Lambda packaging + deploy
+│   ├── deploy.sh                    # SNS + EventBridge + CUR + SSM
+│   ├── deploy-dashboard.sh          # Dashboard Lambda + API + S3
+│   ├── deploy-cloudfront.sh         # Optional HTTPS via CloudFront
+│   ├── validate.sh                  # End-to-end validation
+│   └── cleanup.sh                   # Delete all resources
 │
 └── .github/
     ├── workflows/
-    │   └── validate.yml             # CI validation
+    │   └── validate.yml
     └── ISSUE_TEMPLATE/
         └── bug_report.md
 ```
@@ -174,24 +182,48 @@ echo "Project: ${PROJECT_NAME}"
 
 ### 3. Follow Section Guides in Order
 
-- **Kehan** → [`sections/section-1-iam-dynamodb.md`](sections/section-1-iam-dynamodb.md)
-- **Soham** → [`sections/section-2-lambda.md`](sections/section-2-lambda.md)
-- **Atharva** → [`sections/section-3-sns-eventbridge.md`](sections/section-3-sns-eventbridge.md)
-- **Priyank** → [`sections/section-4-cur-ssm.md`](sections/section-4-cur-ssm.md)
-- **Atharva** → [`sections/section-5-dashboard.md`](sections/section-5-dashboard.md)
-- **Abhishek** → [`sections/section-6-testing-cleanup.md`](sections/section-6-testing-cleanup.md)
+- [`sections/section-1-iam-dynamodb.md`](sections/section-1-iam-dynamodb.md)
+- [`sections/section-2-lambda.md`](sections/section-2-lambda.md)
+- [`sections/section-3-sns-eventbridge.md`](sections/section-3-sns-eventbridge.md)
+- [`sections/section-4-cur-ssm.md`](sections/section-4-cur-ssm.md)
+- [`sections/section-5-dashboard.md`](sections/section-5-dashboard.md)
+- [`sections/section-6-testing-cleanup.md`](sections/section-6-testing-cleanup.md)
 
 ---
 
 ## Deployment Guide
 
+### Option A — Terraform (Recommended) ⚡
+
+```bash
+cd terraform
+cp terraform.tfvars.example terraform.tfvars   # edit with your values
+terraform init
+terraform apply
+```
+
+See [terraform/README.md](terraform/README.md) for full details.
+
+### Option B — Shell Scripts (Step-by-step)
+
 Run sections **in order** (Sections 1–5 deploy; Section 6 validates):
 
 ```bash
-# Full deployment (run as team lead after all PRs merged)
-bash scripts/setup.sh
-bash scripts/deploy.sh
-bash scripts/deploy-dashboard.sh
+# Optional: create a local env file for convenience
+cp .env.example .env
+source .env   # or export vars manually
+
+# Full deployment
+bash scripts/setup.sh              # IAM + DynamoDB + S3
+bash scripts/deploy-analyzer.sh    # Analyzer Lambda
+bash scripts/deploy.sh             # SNS + EventBridge + CUR + SSM
+bash scripts/deploy-dashboard.sh   # Dashboard Lambda + API Gateway + S3 upload
+
+# Trigger one fresh billing snapshot for the dashboard
+aws lambda invoke --function-name ${PROJECT_NAME}-analyzer --payload '{}' /tmp/r.json && cat /tmp/r.json
+
+# Optional: HTTPS via CloudFront (takes 5-10 minutes)
+bash scripts/deploy-cloudfront.sh
 ```
 
 ---
@@ -219,11 +251,14 @@ bash scripts/validate.sh
 ## Cleanup
 
 ```bash
-# Remove all deployed resources
+# If deployed with Terraform:
+cd terraform && terraform destroy
+
+# If deployed with shell scripts:
 bash scripts/cleanup.sh
 ```
 
-> ⚠️ This deletes all AWS resources created by this project. Confirm before running.
+> ⚠️ This permanently deletes all AWS resources created by this project.
 
 ---
 

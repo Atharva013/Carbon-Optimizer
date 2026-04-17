@@ -1,6 +1,5 @@
 # Section 3 — SNS Notifications & EventBridge Schedules
 
-**Assigned To:** Atharva Jadhav  
 **Estimated Time:** 2–3 hours  
 **Branch:** `feature/section-3-sns-eventbridge`  
 **Dependencies:** Section 1 (IAM Role ARN) and Section 2 (Lambda Function ARN) must be merged
@@ -286,4 +285,4 @@ aws lambda get-function-configuration \
 2. Open a PR to `main` titled: **"Section 3: SNS Notifications & EventBridge Schedules"**
 3. Add label: `automation`
 4. Paste the schedule list output and SNS subscription status in the PR description
-5. Request review from Team Member 5 (testing lead)
+5. Review the schedule list output and SNS subscription status before merging
